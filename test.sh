@@ -16,7 +16,12 @@ assert() {
   fi
 }
 
+# return the inputted number
 assert 0 0
 assert 42 42
+
+# return calculation result of add and sub
+assert 21 "5+20-4"
+assert 0 "3+15-18"
 
 echo OK
