@@ -25,4 +25,8 @@ assert 21 "5+20-4"
 assert 0 "3+15-18"
 assert 255 "2+189-2+66"
 
+# return calculation result of add and sub (with spaces)
+assert 41 "12 + 34 - 5"
+assert 81 "  52 + 34 - 5 "
+
 echo OK
