@@ -6,6 +6,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+
+/*** Token definition ***/
 typedef enum {
   TK_RESERVED,
   TK_NUM,
@@ -19,12 +21,16 @@ struct Token {
   int val;
   char *str;
 };
+/*** Token definition ***/
 
-// token currently processed
-Token *token;
-// whole programm
-char *user_input;
 
+/*** GLOBAL VARIALBES ***/
+Token *token;       // token currently processed
+char *user_input;   // whole program
+/*** GLOBAL VARIALBES ***/
+
+
+/*** error ***/
 void error_at(char *loc, char *fmt, ...) {
   va_list ap;
   va_start(ap, fmt);
@@ -45,26 +51,16 @@ void error(char *fmt, ...) {
   fprintf(stderr, "\n");
   exit(1);
 }
+/*** error ***/
 
+
+/*** tokenizer ***/
 Token *new_token(TokenKind kind, Token *cur, char *str) {
   Token *tok = calloc(1, sizeof(Token));
   tok->kind = kind;
   tok->str = str;
   cur->next = tok;
   return tok;
-}
-
-bool consume(char op) {
-  if (token->kind != TK_RESERVED || token->str[0] != op)
-    return false;
-  token = token->next;
-  return true;
-}
-
-void expect(char op) {
-  if (token->kind != TK_RESERVED || token->str[0] != op)
-    error_at(token->str, "Expected %c.", op);
-  token = token->next;
 }
 
 Token *tokenize() {
@@ -96,6 +92,22 @@ Token *tokenize() {
   new_token(TK_EOF, cur, p);
   return head.next;
 }
+/*** tokenizer ***/
+
+
+/*** token processor ***/
+bool consume(char op) {
+  if (token->kind != TK_RESERVED || token->str[0] != op)
+    return false;
+  token = token->next;
+  return true;
+}
+
+void expect(char op) {
+  if (token->kind != TK_RESERVED || token->str[0] != op)
+    error_at(token->str, "Expected %c.", op);
+  token = token->next;
+}
 
 int expect_number() {
   if (token->kind != TK_NUM)
@@ -108,6 +120,7 @@ int expect_number() {
 bool at_eof() {
   return token->kind == TK_EOF;
 }
+/*** token processor ***/
 
 
 int main(int argc, char **argv) {
