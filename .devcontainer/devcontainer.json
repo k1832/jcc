@@ -1,0 +1,9 @@
+{
+    "name": "scc",
+    "build": {
+        "dockerfile": "Dockerfile"
+    },
+    "extensions": [
+        "ms-vscode.cpptools-extension-pack"
+    ]
+}
