@@ -23,5 +23,6 @@ assert 42 42
 # return calculation result of add and sub
 assert 21 "5+20-4"
 assert 0 "3+15-18"
+assert 255 "2+189-2+66"
 
 echo OK
