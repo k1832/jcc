@@ -1,6 +1,8 @@
 CFLAGS=-std=c11 -g -static
 
 jcc: jcc.c
+	make style
+	cc ${CFLAGS} $? -o $@
 
 test: jcc
 	./test.sh
