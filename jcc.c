@@ -50,7 +50,7 @@ char *user_input;   // whole program
 
 
 /*** error ***/
-void error_at(char *loc, char *fmt, ...) {
+void ExitWithErrorAt(char *loc, char *fmt, ...) {
   va_list ap;
   va_start(ap, fmt);
 
@@ -63,7 +63,7 @@ void error_at(char *loc, char *fmt, ...) {
   exit(1);
 }
 
-void error(char *fmt, ...) {
+void ExitWithError(char *fmt, ...) {
   va_list ap;
   va_start(ap, fmt);
   vfprintf(stderr, fmt, ap);
@@ -74,7 +74,7 @@ void error(char *fmt, ...) {
 
 
 /*** tokenizer ***/
-Token *new_token(TokenKind kind, Token *cur, char *str) {
+Token *ConnectAndGetNewToken(TokenKind kind, Token *cur, char *str) {
   Token *tok = calloc(1, sizeof(Token));
   tok->kind = kind;
   tok->str = str;
@@ -82,7 +82,7 @@ Token *new_token(TokenKind kind, Token *cur, char *str) {
   return tok;
 }
 
-Token *tokenize() {
+Token *Tokenize() {
   char *p = user_input;
   Token head;
   head.next = NULL;
@@ -95,89 +95,89 @@ Token *tokenize() {
     }
 
     if (strchr("+-*/()", *p)) {
-      cur = new_token(TK_RESERVED, cur, p++);
+      cur = ConnectAndGetNewToken(TK_RESERVED, cur, p++);
       continue;
     }
 
     if (isdigit(*p)) {
-      cur = new_token(TK_NUM, cur, p);
+      cur = ConnectAndGetNewToken(TK_NUM, cur, p);
       cur->val = strtol(p, &p, 10);
       continue;
     }
 
-    error_at(p, "Invalid token.");
+    ExitWithErrorAt(p, "Invalid token.");
   }
 
-  new_token(TK_EOF, cur, p);
+  ConnectAndGetNewToken(TK_EOF, cur, p);
   return head.next;
 }
 /*** tokenizer ***/
 
 
 /*** token processor ***/
-bool consume(char op) {
+bool Consume(char op) {
   if (token->kind != TK_RESERVED || token->str[0] != op)
     return false;
   token = token->next;
   return true;
 }
 
-void expect(char op) {
+void Expect(char op) {
   if (token->kind != TK_RESERVED || token->str[0] != op)
-    error_at(token->str, "Expected %c.", op);
+    ExitWithErrorAt(token->str, "Expected %c.", op);
   token = token->next;
 }
 
-int expect_number() {
+int ExpectNumber() {
   if (token->kind != TK_NUM)
-    error_at(token->str, "Expected a number.");
+    ExitWithErrorAt(token->str, "Expected a number.");
   int val = token->val;
   token = token->next;
   return val;
 }
 
-bool at_eof() {
+bool AtEOF() {
   return token->kind == TK_EOF;
 }
 /*** token processor ***/
 
 
 /*** AST parser ***/
-Node *new_node(NodeKind kind) {
+Node *NewNode(NodeKind kind) {
   Node *node = calloc(1, sizeof(Node));
   node->kind = kind;
   return node;
 }
 
-Node *new_binary(NodeKind kind, Node *lhs, Node *rhs) {
-  Node *node = new_node(kind);
+Node *NewBinary(NodeKind kind, Node *lhs, Node *rhs) {
+  Node *node = NewNode(kind);
   node->lhs = lhs;
   node->rhs = rhs;
   return node;
 }
 
-Node *new_node_num(int val) {
-  Node *node = new_node(ND_NUM);
+Node *NewNodeNumber(int val) {
+  Node *node = NewNode(ND_NUM);
   node->val = val;
   return node;
 }
 
-Node *expr();
-Node *mul();
-Node *unary();
-Node *primary();
+Node *Expression();
+Node *MulDiv();
+Node *Unary();
+Node *Primary();
 
-// expr    = mul ("+" mul | "-" mul)*
-Node *expr() {
-  Node *node = mul();
+// Expression    = MulDiv ("+" MulDiv | "-" MulDiv)*
+Node *Expression() {
+  Node *node = MulDiv();
   for (;;) {
-    if (consume('+')) {
-      node = new_binary(ND_ADD, node, mul());
+    if (Consume('+')) {
+      node = NewBinary(ND_ADD, node, MulDiv());
       continue;
     }
 
-    if (consume('-')) {
-      node = new_binary(ND_SUB, node, mul());
+    if (Consume('-')) {
+      node = NewBinary(ND_SUB, node, MulDiv());
       continue;
     }
 
@@ -185,17 +185,17 @@ Node *expr() {
   }
 }
 
-// mul     = unary ("*" unary | "/" unary)*
-Node *mul() {
-  Node *node = unary();
+// MulDiv     = Unary ("*" Unary | "/" Unary)*
+Node *MulDiv() {
+  Node *node = Unary();
   for (;;) {
-    if (consume('*')) {
-      node = new_binary(ND_MUL, node, unary());
+    if (Consume('*')) {
+      node = NewBinary(ND_MUL, node, Unary());
       continue;
     }
 
-    if (consume('/')) {
-      node = new_binary(ND_DIV, node, unary());
+    if (Consume('/')) {
+      node = NewBinary(ND_DIV, node, Unary());
       continue;
     }
 
@@ -203,39 +203,39 @@ Node *mul() {
   }
 }
 
-// unary   = ("+" | "-")? primary
-Node *unary() {
-  if (consume('+'))
-    return primary();
+// Unary   = ("+" | "-")? Primary
+Node *Unary() {
+  if (Consume('+'))
+    return Primary();
 
-  if (consume('-'))
-    return new_binary(ND_SUB, new_node_num(0), primary());
+  if (Consume('-'))
+    return NewBinary(ND_SUB, NewNodeNumber(0), Primary());
 
-  return primary();
+  return Primary();
 }
 
-// primary = num | "(" expr ")"
-Node *primary() {
-  if (consume('(')) {
-    Node *node = expr();
-    expect(')');
+// Primary = number | "(" Expression ")"
+Node *Primary() {
+  if (Consume('(')) {
+    Node *node = Expression();
+    Expect(')');
     return node;
   }
 
-  return new_node_num(expect_number());
+  return NewNodeNumber(ExpectNumber());
 }
 /*** AST parser ***/
 
 
 /*** code generator ***/
-void gen(Node *node) {
+void PrintAssembly(Node *node) {
   if (node->kind == ND_NUM) {
     printf("  push %d\n", node->val);
     return;
   }
 
-  gen(node->lhs);
-  gen(node->rhs);
+  PrintAssembly(node->lhs);
+  PrintAssembly(node->rhs);
 
   printf("  pop rdi\n");
   printf("  pop rax\n");
@@ -268,14 +268,14 @@ int main(int argc, char **argv) {
   }
 
   user_input = argv[1];
-  token = tokenize();
-  Node *node = expr();
+  token = Tokenize();
+  Node *ast_root = Expression();
 
   printf(".intel_syntax noprefix\n");
   printf(".globl main\n");
   printf("main:\n");
 
-  gen(node);
+  PrintAssembly(ast_root);
 
   printf("  pop rax\n");
   printf("  ret\n");
