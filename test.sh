@@ -27,11 +27,17 @@ assert 255 "2+189-2+66"
 
 # return calculation result of add and sub (with spaces)
 assert 41 "12 + 34 - 5"
+assert 28 "12 - 34 + 50"
 assert 81 "  52 + 34 - 5 "
 
 # return calculation result of expressions including "+-*/()"
 assert 47 '5+6*7'
 assert 15 '5*(9-6)'
 assert 4 '(3+5)/2'
+
+# include unary
+assert 1 '-5+6'
+assert 15 '+5*(9-6)'
+assert 4 '(3+5)/+2'
 
 echo OK
