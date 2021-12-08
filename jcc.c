@@ -83,41 +83,42 @@ Token *ConnectAndGetNewToken(TokenKind kind, Token *cur, char *str) {
 }
 
 Token *Tokenize() {
-  char *p = user_input;
+  char *char_pointer = user_input;
   Token head;
   head.next = NULL;
   Token *cur = &head;
 
-  while (*p) {
-    if (isspace(*p)) {
-      ++p;
+  while (*char_pointer) {
+    if (isspace(*char_pointer)) {
+      ++char_pointer;
       continue;
     }
 
-    if (strchr("+-*/()", *p)) {
-      cur = ConnectAndGetNewToken(TK_RESERVED, cur, p++);
+    if (strchr("+-*/()", *char_pointer)) {
+      cur = ConnectAndGetNewToken(TK_RESERVED, cur, char_pointer++);
       continue;
     }
 
-    if (isdigit(*p)) {
-      cur = ConnectAndGetNewToken(TK_NUM, cur, p);
-      cur->val = strtol(p, &p, 10);
+    if (isdigit(*char_pointer)) {
+      cur = ConnectAndGetNewToken(TK_NUM, cur, char_pointer);
+      cur->val = strtol(char_pointer, &char_pointer, 10);
       continue;
     }
 
-    ExitWithErrorAt(p, "Invalid token.");
+    ExitWithErrorAt(char_pointer, "Invalid token.");
   }
 
-  ConnectAndGetNewToken(TK_EOF, cur, p);
+  ConnectAndGetNewToken(TK_EOF, cur, char_pointer);
   return head.next;
 }
 /*** tokenizer ***/
 
 
 /*** token processor ***/
-bool Consume(char op) {
+bool ConsumeIfReservedTokenMatches(char op) {
   if (token->kind != TK_RESERVED || token->str[0] != op)
     return false;
+
   token = token->next;
   return true;
 }
@@ -131,6 +132,7 @@ void Expect(char op) {
 int ExpectNumber() {
   if (token->kind != TK_NUM)
     ExitWithErrorAt(token->str, "Expected a number.");
+
   int val = token->val;
   token = token->next;
   return val;
@@ -171,12 +173,12 @@ Node *Primary();
 Node *Expression() {
   Node *node = MulDiv();
   for (;;) {
-    if (Consume('+')) {
+    if (ConsumeIfReservedTokenMatches('+')) {
       node = NewBinary(ND_ADD, node, MulDiv());
       continue;
     }
 
-    if (Consume('-')) {
+    if (ConsumeIfReservedTokenMatches('-')) {
       node = NewBinary(ND_SUB, node, MulDiv());
       continue;
     }
@@ -189,12 +191,12 @@ Node *Expression() {
 Node *MulDiv() {
   Node *node = Unary();
   for (;;) {
-    if (Consume('*')) {
+    if (ConsumeIfReservedTokenMatches('*')) {
       node = NewBinary(ND_MUL, node, Unary());
       continue;
     }
 
-    if (Consume('/')) {
+    if (ConsumeIfReservedTokenMatches('/')) {
       node = NewBinary(ND_DIV, node, Unary());
       continue;
     }
@@ -205,10 +207,10 @@ Node *MulDiv() {
 
 // Unary   = ("+" | "-")? Primary
 Node *Unary() {
-  if (Consume('+'))
+  if (ConsumeIfReservedTokenMatches('+'))
     return Primary();
 
-  if (Consume('-'))
+  if (ConsumeIfReservedTokenMatches('-'))
     return NewBinary(ND_SUB, NewNodeNumber(0), Primary());
 
   return Primary();
@@ -216,7 +218,7 @@ Node *Unary() {
 
 // Primary = number | "(" Expression ")"
 Node *Primary() {
-  if (Consume('(')) {
+  if (ConsumeIfReservedTokenMatches('(')) {
     Node *node = Expression();
     Expect(')');
     return node;
