@@ -362,7 +362,7 @@ void PrintAssembly(Node *node) {
 
 int main(int argc, char **argv) {
   if (argc != 2) {
-    fprintf(stderr, "引数の個数が正しくありません\n");
+    fprintf(stderr, "Exactly one argument must be passed.\n");
     return 1;
   }
 
