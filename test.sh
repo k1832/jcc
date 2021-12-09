@@ -40,4 +40,16 @@ assert 1 '-5+6'
 assert 15 '+5*(9-6)'
 assert 4 '(3+5)/+2'
 
+# relationals
+assert 1 "0==0"
+assert 0 "1==0"
+assert 1 "-12<12"
+assert 0 "12<12"
+assert 1 "-12<=12"
+assert 1 "0<=0"
+assert 0 "9<=8"
+assert 1 "0>=0"
+assert 1 "1>=0"
+assert 0 "0>=1"
+
 echo OK

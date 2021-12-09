@@ -20,6 +20,7 @@ struct Token {
   Token *next;
   int val;
   char *str;
+  int len;
 };
 /*** Token definition ***/
 
@@ -30,6 +31,10 @@ typedef enum {
   ND_SUB,
   ND_MUL,
   ND_DIV,
+  ND_EQ,
+  ND_NEQ,
+  ND_LT,
+  ND_NGT,
   ND_NUM,
 } NodeKind;
 
@@ -74,12 +79,18 @@ void ExitWithError(char *fmt, ...) {
 
 
 /*** tokenizer ***/
-Token *ConnectAndGetNewToken(TokenKind kind, Token *cur, char *str) {
+Token *ConnectAndGetNewToken(TokenKind kind, Token *cur, char *str, int len) {
   Token *tok = calloc(1, sizeof(Token));
   tok->kind = kind;
   tok->str = str;
+  tok->len = len;
+
   cur->next = tok;
   return tok;
+}
+
+bool StartsWith(char *p, char *suffix) {
+  return !memcmp(p, suffix, strlen(suffix));
 }
 
 Token *Tokenize() {
@@ -94,39 +105,53 @@ Token *Tokenize() {
       continue;
     }
 
-    if (strchr("+-*/()", *char_pointer)) {
-      cur = ConnectAndGetNewToken(TK_RESERVED, cur, char_pointer++);
+    if (StartsWith(char_pointer, "==") ||
+      StartsWith(char_pointer, "!=") ||
+      StartsWith(char_pointer, "<=") ||
+      StartsWith(char_pointer, ">=")) {
+      cur = ConnectAndGetNewToken(TK_RESERVED, cur, char_pointer, 2);
+      char_pointer += 2;
+      continue;
+    }
+
+    if (strchr("+-*/()><", *char_pointer)) {
+      cur = ConnectAndGetNewToken(TK_RESERVED, cur, char_pointer++, 1);
       continue;
     }
 
     if (isdigit(*char_pointer)) {
-      cur = ConnectAndGetNewToken(TK_NUM, cur, char_pointer);
+      // len is temporarily set to 0
+      cur = ConnectAndGetNewToken(TK_NUM, cur, char_pointer, 0);
+
+      char *num_start = char_pointer;
       cur->val = strtol(char_pointer, &char_pointer, 10);
+      cur->len = char_pointer - num_start;
       continue;
     }
 
     ExitWithErrorAt(char_pointer, "Invalid token.");
   }
 
-  ConnectAndGetNewToken(TK_EOF, cur, char_pointer);
+  ConnectAndGetNewToken(TK_EOF, cur, char_pointer, 1);
   return head.next;
 }
 /*** tokenizer ***/
 
 
 /*** token processor ***/
-bool ConsumeIfReservedTokenMatches(char op) {
-  if (token->kind != TK_RESERVED || token->str[0] != op)
+bool ConsumeIfReservedTokenMatches(char *op) {
+  if (token->kind != TK_RESERVED ||
+    token->len != strlen(op) ||
+    memcmp(token->str, op, token->len))
     return false;
 
   token = token->next;
   return true;
 }
 
-void Expect(char op) {
-  if (token->kind != TK_RESERVED || token->str[0] != op)
-    ExitWithErrorAt(token->str, "Expected %c.", op);
-  token = token->next;
+void Expect(char *op) {
+  if (!ConsumeIfReservedTokenMatches(op))
+    ExitWithErrorAt(token->str, "Expected %c.", *op);
 }
 
 int ExpectNumber() {
@@ -165,20 +190,75 @@ Node *NewNodeNumber(int val) {
 }
 
 Node *Expression();
+Node *Equality();
+Node *Relational();
+Node *Add();
 Node *MulDiv();
 Node *Unary();
 Node *Primary();
 
-// Expression    = MulDiv ("+" MulDiv | "-" MulDiv)*
 Node *Expression() {
+  return Equality();
+}
+
+// Equality   = Relational ("==" Relational | "!=" Relational)*
+Node *Equality() {
+    Node *node = Relational();
+    for (;;) {
+      if (ConsumeIfReservedTokenMatches("==")) {
+        node = NewBinary(ND_EQ, node, Relational());
+        continue;
+      }
+
+      if (ConsumeIfReservedTokenMatches("!=")) {
+        node = NewBinary(ND_NEQ, node, Relational());
+        continue;
+      }
+
+      return node;
+    }
+}
+
+// Relational = Add ("<" Add | "<=" Add | ">" Add | ">=" Add)*
+Node *Relational() {
+  Node *node = Add();
+  for (;;) {
+    if (ConsumeIfReservedTokenMatches("<")) {
+      node = NewBinary(ND_LT, node, Add());
+      continue;
+    }
+
+    if (ConsumeIfReservedTokenMatches(">")) {
+      // Add() < node = node > Add()
+      node = NewBinary(ND_LT, Add(), node);
+      continue;
+    }
+
+    if (ConsumeIfReservedTokenMatches("<=")) {
+      node = NewBinary(ND_NGT, node, Add());
+      continue;
+    }
+
+    if (ConsumeIfReservedTokenMatches(">=")) {
+      // Add() <= node = node >= Add()
+      node = NewBinary(ND_NGT, Add(), node);
+      continue;
+    }
+
+    return node;
+  }
+}
+
+// Add    = MulDiv ("+" MulDiv | "-" MulDiv)*
+Node *Add() {
   Node *node = MulDiv();
   for (;;) {
-    if (ConsumeIfReservedTokenMatches('+')) {
+    if (ConsumeIfReservedTokenMatches("+")) {
       node = NewBinary(ND_ADD, node, MulDiv());
       continue;
     }
 
-    if (ConsumeIfReservedTokenMatches('-')) {
+    if (ConsumeIfReservedTokenMatches("-")) {
       node = NewBinary(ND_SUB, node, MulDiv());
       continue;
     }
@@ -191,12 +271,12 @@ Node *Expression() {
 Node *MulDiv() {
   Node *node = Unary();
   for (;;) {
-    if (ConsumeIfReservedTokenMatches('*')) {
+    if (ConsumeIfReservedTokenMatches("*")) {
       node = NewBinary(ND_MUL, node, Unary());
       continue;
     }
 
-    if (ConsumeIfReservedTokenMatches('/')) {
+    if (ConsumeIfReservedTokenMatches("/")) {
       node = NewBinary(ND_DIV, node, Unary());
       continue;
     }
@@ -207,20 +287,20 @@ Node *MulDiv() {
 
 // Unary   = ("+" | "-")? Primary
 Node *Unary() {
-  if (ConsumeIfReservedTokenMatches('+'))
+  if (ConsumeIfReservedTokenMatches("+"))
     return Primary();
 
-  if (ConsumeIfReservedTokenMatches('-'))
+  if (ConsumeIfReservedTokenMatches("-"))
     return NewBinary(ND_SUB, NewNodeNumber(0), Primary());
 
   return Primary();
 }
 
-// Primary = number | "(" Expression ")"
+// Primary = number | "(" Add ")"
 Node *Primary() {
-  if (ConsumeIfReservedTokenMatches('(')) {
+  if (ConsumeIfReservedTokenMatches("(")) {
     Node *node = Expression();
-    Expect(')');
+    Expect(")");
     return node;
   }
 
@@ -255,6 +335,23 @@ void PrintAssembly(Node *node) {
     case ND_DIV:
       printf("  cqo\n");
       printf("  idiv rdi\n");
+      break;
+    case ND_EQ:
+      printf("  cmp rax, rdi\n");
+      printf("  sete al\n");  // al is the bottom 8 bits of rax
+      printf("  movzb rax, al\n");  // zero-fill top 56 bits
+      break;
+    case ND_LT:
+      // rax < rdi
+      printf("  cmp rax, rdi\n");
+      printf("  setl al\n");
+      printf("  movzb rax, al\n");
+      break;
+    case ND_NGT:
+      // rax <= rdi
+      printf("  cmp rax, rdi\n");
+      printf("  setle al\n");
+      printf("  movzb rax, al\n");
       break;
   }
 
