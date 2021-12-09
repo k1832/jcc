@@ -1,8 +1,12 @@
 CFLAGS=-std=c11 -g -static
+SRCS=$(wildcard *.c)
+OBJS=$(SRCS:.c=.o)
 
-jcc: jcc.c
+jcc: $(OBJS)
 	make style
-	cc ${CFLAGS} $? -o $@
+	$(CC) -o jcc $(OBJS) $(LDFLAGS)
+
+$(OBJS): jcc.h
 
 test: jcc
 	./test.sh
