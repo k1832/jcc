@@ -44,6 +44,7 @@ assert 4 '(3+5)/+2'
 assert 1 "0==0"
 assert 0 "1==0"
 assert 1 "-12<12"
+assert 1 "5+12-12<6+1"
 assert 0 "12<12"
 assert 1 "-12<=12"
 assert 1 "0<=0"
