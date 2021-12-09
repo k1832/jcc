@@ -11,8 +11,8 @@ $(OBJS): jcc.h
 test: jcc
 	./test.sh
 
-style: jcc.c
-	cpplint jcc.c
+style: $(SRCS)
+	cpplint $(SRCS)
 
 clean:
 	rm -f jcc *.o *~ tmp*
