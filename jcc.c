@@ -4,49 +4,9 @@
 
 #include "./jcc.h"
 
-
-/*** util ***/
-bool StartsWith(char *p, char *suffix);
-
-void ExitWithErrorAt(char *loc, char *fmt, ...);
-void ExitWithError(char *fmt, ...);
-/*** util ***/
-
-
-/*** tokenizer ***/
-Token *ConnectAndGetNewToken(TokenKind kind, Token *cur, char *str, int len);
 Token *Tokenize();
-/*** tokenizer ***/
-
-
-/*** token processor ***/
-bool ConsumeIfReservedTokenMatches(char *op);
-void Expect(char *op);
-int ExpectNumber();
-
-bool AtEOF();
-/*** token processor ***/
-
-
-/*** AST parser ***/
-Node *NewNode(NodeKind kind);
-Node *NewBinary(NodeKind kind, Node *lhs, Node *rhs);
-Node *NewNodeNumber(int val);
-
 Node *Expression();
-Node *Equality();
-Node *Relational();
-Node *Add();
-Node *MulDiv();
-Node *Unary();
-Node *Primary();
-/*** AST parser ***/
-
-
-/*** code generator ***/
 void PrintAssembly(Node *node);
-/*** code generator ***/
-
 
 int main(int argc, char **argv) {
   if (argc != 2) {
