@@ -1,5 +1,10 @@
 /* Copyright 2021 Morisaki, Keita. All rights reserved. */
 
+// read this header only once
+#ifndef JCC_H_
+#define JCC_H_
+
+
 /*** Token definition ***/
 typedef enum {
   TK_RESERVED,
@@ -45,3 +50,6 @@ struct Node {
 extern Token *token;       // token currently processed
 extern char *user_input;   // whole program
 /*** GLOBAL VARIALBES ***/
+
+
+#endif  // JCC_H_
