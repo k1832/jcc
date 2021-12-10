@@ -10,10 +10,11 @@ void ExitWithErrorAt(char *input, char *loc, char *fmt, ...) {
   va_list ap;
   va_start(ap, fmt);
 
-  int pos = loc - input;
+  int padding_len = loc - input;
+  char marker[] = "^ ";
+  int marker_len = (int) strlen(marker);
   fprintf(stderr, "%s\n", input);
-  fprintf(stderr, "%*s", pos, "");
-  fprintf(stderr, "^ ");
+  fprintf(stderr, "%*s", padding_len + marker_len, marker);
   vfprintf(stderr, fmt, ap);
   fprintf(stderr, "\n");
   exit(1);
