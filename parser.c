@@ -10,7 +10,7 @@
 Token *token;       // token currently processed
 char *user_input;   // whole program
 
-void ExitWithErrorAt(char *loc, char *fmt, ...);
+void ExitWithErrorAt(char *input, char *loc, char *fmt, ...);
 bool StartsWith(char *p, char *suffix);
 
 /*** tokenizer ***/
@@ -60,7 +60,7 @@ Token *Tokenize() {
       continue;
     }
 
-    ExitWithErrorAt(char_pointer, "Invalid token.");
+    ExitWithErrorAt(user_input, char_pointer, "Invalid token.");
   }
 
   ConnectAndGetNewToken(TK_EOF, cur, char_pointer, 1);
@@ -82,12 +82,12 @@ bool ConsumeIfReservedTokenMatches(char *op) {
 
 void Expect(char *op) {
   if (!ConsumeIfReservedTokenMatches(op))
-    ExitWithErrorAt(token->str, "Expected %c.", *op);
+    ExitWithErrorAt(user_input, token->str, "Expected %c.", *op);
 }
 
 int ExpectNumber() {
   if (token->kind != TK_NUM)
-    ExitWithErrorAt(token->str, "Expected a number.");
+    ExitWithErrorAt(user_input, token->str, "Expected a number.");
 
   int val = token->val;
   token = token->next;

@@ -5,18 +5,14 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "./jcc.h"
-
-char *user_input;   // whole program
-
 /*** error ***/
-void ExitWithErrorAt(char *loc, char *fmt, ...) {
+void ExitWithErrorAt(char *input, char *loc, char *fmt, ...) {
   va_list ap;
   va_start(ap, fmt);
 
-  int pos = loc - user_input;
-  fprintf(stderr, "%s\n", user_input);
-  fprintf(stderr, "%*s", pos, " ");
+  int pos = loc - input;
+  fprintf(stderr, "%s\n", input);
+  fprintf(stderr, "%*s", pos, "");
   fprintf(stderr, "^ ");
   vfprintf(stderr, fmt, ap);
   fprintf(stderr, "\n");
@@ -32,6 +28,6 @@ void ExitWithError(char *fmt, ...) {
 }
 /*** error ***/
 
-bool StartsWith(char *p, char *suffix) {
-  return !memcmp(p, suffix, strlen(suffix));
+bool StartsWith(char *p, char *possible_suffix) {
+  return !memcmp(p, possible_suffix, strlen(possible_suffix));
 }
