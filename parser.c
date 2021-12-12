@@ -104,7 +104,7 @@ Token *ConsumeAndGetIfIdent() {
 void Expect(char *op) {
   if (ConsumeIfReservedTokenMatches(op)) return;
 
-  ExitWithErrorAt(user_input, token->str, "Expected %c.", *op);
+  ExitWithErrorAt(user_input, token->str, "Expected `%c`.", *op);
 }
 
 int ExpectNumber() {

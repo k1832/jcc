@@ -57,5 +57,6 @@ assert 0 "0>=1;"
 assert 3 "a=3;"
 assert 182 "a=18; z=200; z-a;"
 assert 14 "a=3; b=5*6-8; a+b/2;"
+assert 224 "a=112; a+a;"
 
 echo OK
