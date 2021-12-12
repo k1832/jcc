@@ -7,8 +7,9 @@ void ExitWithError(char *fmt, ...);
 
 // Push the ADDRESS of node only if node is left-value.
 void PrintAssemblyForLeftVar(Node *node) {
-  if (node->kind != ND_LVAR)
+  if (node->kind != ND_LVAR) {
     ExitWithError("Left-hand-side of an assignment is not a variable.");
+  }
 
   printf("  mov rax, rbp\n");
   printf("  sub rax, %d\n", node->offset);

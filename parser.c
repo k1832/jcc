@@ -81,8 +81,9 @@ void *Tokenize() {
 bool ConsumeIfReservedTokenMatches(char *op) {
   if (token->kind != TK_RESERVED ||
     token->len != strlen(op) ||
-    memcmp(token->str, op, token->len))
+    memcmp(token->str, op, token->len)) {
     return false;
+  }
 
   token = token->next;
   return true;
@@ -91,8 +92,9 @@ bool ConsumeIfReservedTokenMatches(char *op) {
 // Consume a token only if the token is TK_IDENT.
 // Return the consumed identity-token, but not the next generated token.
 Token *ConsumeAndGetIfIdent() {
-  if (token->kind != TK_IDENT)
+  if (token->kind != TK_IDENT) {
     return NULL;
+  }
 
   Token *ident_token = token;
   token = token->next;
@@ -100,13 +102,15 @@ Token *ConsumeAndGetIfIdent() {
 }
 
 void Expect(char *op) {
-  if (!ConsumeIfReservedTokenMatches(op))
-    ExitWithErrorAt(user_input, token->str, "Expected %c.", *op);
+  if (ConsumeIfReservedTokenMatches(op)) return;
+
+  ExitWithErrorAt(user_input, token->str, "Expected %c.", *op);
 }
 
 int ExpectNumber() {
-  if (token->kind != TK_NUM)
+  if (token->kind != TK_NUM) {
     ExitWithErrorAt(user_input, token->str, "Expected a number.");
+  }
 
   int val = token->val;
   token = token->next;
@@ -181,8 +185,9 @@ Node *Expression() {
 // Assignment     = Equality ("=" Assignment)?
 Node *Assignment() {
   Node *node = Equality();
-  if (ConsumeIfReservedTokenMatches("="))
+  if (ConsumeIfReservedTokenMatches("=")) {
     node = NewBinary(ND_ASSIGN, node, Assignment());
+  }
   return node;
 }
 
@@ -272,11 +277,13 @@ Node *MulDiv() {
 
 // Unary   = ("+" | "-")? Primary
 Node *Unary() {
-  if (ConsumeIfReservedTokenMatches("+"))
+  if (ConsumeIfReservedTokenMatches("+")) {
     return Primary();
+  }
 
-  if (ConsumeIfReservedTokenMatches("-"))
+  if (ConsumeIfReservedTokenMatches("-")) {
     return NewBinary(ND_SUB, NewNodeNumber(0), Primary());
+  }
 
   return Primary();
 }
