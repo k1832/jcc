@@ -14,14 +14,16 @@ void ExitWithErrorAt(char *input, char *loc, char *fmt, ...);
 bool StartsWith(char *p, char *suffix);
 
 /*** tokenizer ***/
-Token *ConnectAndGetNewToken(TokenKind kind, Token *cur, char *str, int len) {
-  Token *tok = calloc(1, sizeof(Token));
-  tok->kind = kind;
-  tok->str = str;
-  tok->len = len;
+Token *ConnectAndGetNewToken(
+    TokenKind kind, Token *current, char *str, int len
+  ) {
+  Token *new_token = calloc(1, sizeof(Token));
+  new_token->kind = kind;
+  new_token->str = str;
+  new_token->len = len;
 
-  cur->next = tok;
-  return tok;
+  current->next = new_token;
+  return new_token;
 }
 
 Token *Tokenize() {
