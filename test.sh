@@ -17,40 +17,45 @@ assert() {
 }
 
 # return the inputted number
-assert 0 0
-assert 42 42
+assert 0 "0;"
+assert 42 "42;"
 
 # return calculation result of add and sub
-assert 21 "5+20-4"
-assert 0 "3+15-18"
-assert 255 "2+189-2+66"
+assert 21 "5+20-4;"
+assert 0 "3+15-18;"
+assert 255 "2+189-2+66;"
 
 # return calculation result of add and sub (with spaces)
-assert 41 "12 + 34 - 5"
-assert 28 "12 - 34 + 50"
-assert 81 "  52 + 34 - 5 "
+assert 41 "12 + 34 - 5;"
+assert 28 "12 - 34 + 50;"
+assert 81 "  52 + 34 - 5 ;"
 
 # return calculation result of expressions including "+-*/()"
-assert 47 '5+6*7'
-assert 15 '5*(9-6)'
-assert 4 '(3+5)/2'
+assert 47 '5+6*7;'
+assert 15 '5*(9-6);'
+assert 4 '(3+5)/2;'
 
 # include unary
-assert 1 '-5+6'
-assert 15 '+5*(9-6)'
-assert 4 '(3+5)/+2'
+assert 1 '-5+6;'
+assert 15 '+5*(9-6);'
+assert 4 '(3+5)/+2;'
 
 # relationals
-assert 1 "0==0"
-assert 0 "1==0"
-assert 1 "-12<12"
-assert 1 "5+12-12<6+1"
-assert 0 "12<12"
-assert 1 "-12<=12"
-assert 1 "0<=0"
-assert 0 "9<=8"
-assert 1 "0>=0"
-assert 1 "1>=0"
-assert 0 "0>=1"
+assert 1 "0==0;"
+assert 0 "1==0;"
+assert 1 "-12<12;"
+assert 1 "5+12-12<6+1;"
+assert 0 "12<12;"
+assert 1 "-12<=12;"
+assert 1 "0<=0;"
+assert 0 "9<=8;"
+assert 1 "0>=0;"
+assert 1 "1>=0;"
+assert 0 "0>=1;"
+
+# handling one letter varialbes
+assert 3 "a=3;"
+assert 182 "a=18; z=200; z-a;"
+assert 14 "a=3; b=5*6-8; a+b/2;"
 
 echo OK

@@ -9,6 +9,7 @@
 
 Token *token;       // token currently processed
 char *user_input;   // whole program
+Node *statements[100];
 
 void ExitWithErrorAt(char *input, char *loc, char *fmt, ...);
 bool StartsWith(char *p, char *suffix);
@@ -26,7 +27,7 @@ Token *ConnectAndGetNewToken(
   return new_token;
 }
 
-Token *Tokenize() {
+void *Tokenize() {
   char *char_pointer = user_input;
   Token head;
   head.next = NULL;
@@ -47,7 +48,12 @@ Token *Tokenize() {
       continue;
     }
 
-    if (strchr("+-*/()><", *char_pointer)) {
+    if ('a' <= *char_pointer && *char_pointer <= 'z') {
+      cur = ConnectAndGetNewToken(TK_IDENT, cur, char_pointer++, 1);
+      continue;
+    }
+
+    if (strchr(";=+-*/()><", *char_pointer)) {
       cur = ConnectAndGetNewToken(TK_RESERVED, cur, char_pointer++, 1);
       continue;
     }
@@ -66,7 +72,7 @@ Token *Tokenize() {
   }
 
   ConnectAndGetNewToken(TK_EOF, cur, char_pointer, 1);
-  return head.next;
+  token = head.next;
 }
 /*** tokenizer ***/
 
@@ -80,6 +86,17 @@ bool ConsumeIfReservedTokenMatches(char *op) {
 
   token = token->next;
   return true;
+}
+
+// Consume a token only if the token is TK_IDENT.
+// Return the consumed identity-token, but not the next generated token.
+Token *ConsumeAndGetIfIdent() {
+  if (token->kind != TK_IDENT)
+    return NULL;
+
+  Token *ident_token = token;
+  token = token->next;
+  return ident_token;
 }
 
 void Expect(char *op) {
@@ -122,7 +139,17 @@ Node *NewNodeNumber(int val) {
   return node;
 }
 
+Node *NewNodeLVAR(char *ident) {
+  Node *node = calloc(1, sizeof(Node));
+  node->kind = ND_LVAR;
+  node->offset = (*ident - 'a' + 1) * 8;
+  return node;
+}
+
+void Program();
+Node *Statement();
 Node *Expression();
+Node *Assignment();
 Node *Equality();
 Node *Relational();
 Node *Add();
@@ -130,8 +157,33 @@ Node *MulDiv();
 Node *Unary();
 Node *Primary();
 
+// Program    = Statement*
+void Program() {
+  int i = 0;
+  while (!AtEOF()) {
+    statements[i++] = Statement();
+  }
+  statements[i] = NULL;
+}
+
+// Statement       = Expression ";"
+Node *Statement() {
+  Node *node = Expression();
+  Expect(";");
+  return node;
+}
+
+// Expression       = Assignment
 Node *Expression() {
-  return Equality();
+  return Assignment();
+}
+
+// Assignment     = Equality ("=" Assignment)?
+Node *Assignment() {
+  Node *node = Equality();
+  if (ConsumeIfReservedTokenMatches("="))
+    node = NewBinary(ND_ASSIGN, node, Assignment());
+  return node;
 }
 
 // Equality   = Relational ("==" Relational | "!=" Relational)*
@@ -236,6 +288,8 @@ Node *Primary() {
     Expect(")");
     return node;
   }
+  Token *tok = ConsumeAndGetIfIdent();
+  if (tok) return NewNodeLVAR(tok->str);
 
   return NewNodeNumber(ExpectNumber());
 }

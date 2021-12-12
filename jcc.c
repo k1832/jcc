@@ -4,8 +4,8 @@
 
 #include "./jcc.h"
 
-Token *Tokenize();
-Node *Expression();
+void *Tokenize();
+void Program();
 void PrintAssembly(Node *node);
 
 int main(int argc, char **argv) {
@@ -15,16 +15,29 @@ int main(int argc, char **argv) {
   }
 
   user_input = argv[1];
-  token = Tokenize();
-  Node *ast_root = Expression();
+  Tokenize();
+  Program();
 
   printf(".intel_syntax noprefix\n");
   printf(".globl main\n");
   printf("main:\n");
 
-  PrintAssembly(ast_root);
+  // prologue
+  printf("  push rbp\n");
+  printf("  mov rbp, rsp\n");
+  int num_variables = 26;
+  int bytes_per_variable = 8;
+  printf("  sub rsp, %d\n", num_variables * bytes_per_variable);
 
-  printf("  pop rax\n");
+  for (int i = 0; statements[i]; ++i) {
+    PrintAssembly(statements[i]);
+    printf("  pop rax\n");
+  }
+
+  // epilogue
+  printf("  mov rsp, rbp\n");
+  printf("  pop rbp\n");
+  // "ret" pops the address stored at the stack top, and jump there.
   printf("  ret\n");
   return 0;
 }

@@ -8,6 +8,7 @@
 /*** Token definition ***/
 typedef enum {
   TK_RESERVED,
+  TK_IDENT,
   TK_NUM,
   TK_EOF,
 } TokenKind;
@@ -33,6 +34,8 @@ typedef enum {
   ND_NEQ,
   ND_LT,
   ND_NGT,
+  ND_LVAR,  // local variable
+  ND_ASSIGN,
   ND_NUM,
 } NodeKind;
 
@@ -42,6 +45,7 @@ struct Node {
   Node *lhs;
   Node *rhs;
   int val;
+  int offset;
 };
 /*** AST definition ***/
 
@@ -49,6 +53,7 @@ struct Node {
 /*** GLOBAL VARIALBES ***/
 extern Token *token;       // token currently processed
 extern char *user_input;   // whole program
+extern Node *statements[100];
 /*** GLOBAL VARIALBES ***/
 
 
