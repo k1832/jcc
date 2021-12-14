@@ -7,6 +7,8 @@ void ExitWithError(char *fmt, ...);
 
 // Push the ADDRESS of node only if node is left-value.
 void PrintAssemblyForLeftVar(Node *node) {
+  printf("  # %s (%s): at line %d\n", __FILE__, __func__, __LINE__);
+
   if (node->kind != ND_LVAR) {
     ExitWithError("Left-hand-side of an assignment is not a variable.");
   }
@@ -20,9 +22,11 @@ void PrintAssemblyForLeftVar(Node *node) {
 void PrintAssembly(Node *node) {
   switch (node->kind) {
     case ND_NUM:
+      printf("  # %s (%s): at line %d\n", __FILE__, __func__, __LINE__);
       printf("  push %d\n", node->val);
       return;
     case ND_LVAR:
+      printf("  # %s (%s): at line %d\n", __FILE__, __func__, __LINE__);
       PrintAssemblyForLeftVar(node);
       printf("  pop rax\n");
       printf("  mov rax, [rax]\n");
@@ -30,9 +34,9 @@ void PrintAssembly(Node *node) {
       return;
     case ND_ASSIGN:
       // Assign right to left and push right value to the stack.
+      printf("  # %s (%s): at line %d\n", __FILE__, __func__, __LINE__);
       PrintAssemblyForLeftVar(node->lhs);
       PrintAssembly(node->rhs);
-
       printf("  pop rdi\n");
       printf("  pop rax\n");
       printf("  mov [rax], rdi\n");
@@ -48,31 +52,38 @@ void PrintAssembly(Node *node) {
 
   switch (node->kind) {
     case ND_ADD:
+      printf("  # %s (%s): at line %d\n", __FILE__, __func__, __LINE__);
       printf("  add rax, rdi\n");
       break;
     case ND_SUB:
+      printf("  # %s (%s): at line %d\n", __FILE__, __func__, __LINE__);
       printf("  sub rax, rdi\n");
       break;
     case ND_MUL:
+      printf("  # %s (%s): at line %d\n", __FILE__, __func__, __LINE__);
       printf("  imul rax, rdi\n");
       break;
     case ND_DIV:
+      printf("  # %s (%s): at line %d\n", __FILE__, __func__, __LINE__);
       printf("  cqo\n");
       printf("  idiv rdi\n");
       break;
     case ND_EQ:
+      printf("  # %s (%s): at line %d\n", __FILE__, __func__, __LINE__);
       printf("  cmp rax, rdi\n");
       printf("  sete al\n");  // al is the bottom 8 bits of rax
       printf("  movzb rax, al\n");  // zero-fill top 56 bits
       break;
     case ND_LT:
       // rax < rdi
+      printf("  # %s (%s): at line %d\n", __FILE__, __func__, __LINE__);
       printf("  cmp rax, rdi\n");
       printf("  setl al\n");
       printf("  movzb rax, al\n");
       break;
     case ND_NGT:
       // rax <= rdi
+      printf("  # %s (%s): at line %d\n", __FILE__, __func__, __LINE__);
       printf("  cmp rax, rdi\n");
       printf("  setle al\n");
       printf("  movzb rax, al\n");
