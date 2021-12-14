@@ -27,7 +27,7 @@ Token *ConnectAndGetNewToken(
   return new_token;
 }
 
-void *Tokenize() {
+void Tokenize() {
   char *char_pointer = user_input;
   Token head;
   head.next = NULL;
