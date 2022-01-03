@@ -90,7 +90,7 @@ bool ConsumeIfReservedTokenMatches(char *op) {
 }
 
 // Consume a token only if the token is TK_IDENT.
-// Return the consumed identity-token, but not the next generated token.
+// Return the consumed identifier-token, but not the next generated token.
 Token *ConsumeAndGetIfIdent() {
   if (token->kind != TK_IDENT) {
     return NULL;
@@ -288,7 +288,7 @@ Node *Unary() {
   return Primary();
 }
 
-// Primary = number | "(" Add ")"
+// Primary    = number | identifier | "(" Expression ")"
 Node *Primary() {
   if (ConsumeIfReservedTokenMatches("(")) {
     Node *node = Expression();
