@@ -152,7 +152,7 @@ bool AtEOF() {
 
 
 /*** local variable ***/
-LVar *find_local(Token *tok) {
+LVar *GetDeclaredLocal(Token *tok) {
   for (LVar *local = locals_linked_list_head; local; local = local->next) {
     if (local->len != tok->len) continue;
     if (memcmp(local->name, tok->str, local->len)) continue;
@@ -351,8 +351,9 @@ Node *Primary() {
 
   Token *tok = ConsumeAndGetIfIdent();
   if (tok) {
+    // identifier
     Node *node = NewNode(ND_LVAR);
-    LVar *local = find_local(tok);
+    LVar *local = GetDeclaredLocal(tok);
     if (!local) {
       // new variable
       local = NewLVar(tok);
