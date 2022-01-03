@@ -56,7 +56,7 @@ assert 3 "a=3;"
 assert 14 "a=3; b=5*6-8; a+b/2;"
 assert 224 "a=112; a+a;"
 
-assert 15 "a=1; b=2; abc=a+b; abcd=12; abc+abcd;"
+assert 15 "a=1; b=2; a_b=a+b; ab00=12; a_b+ab00;"
 assert 1 "zz=1; z=2; zz;"
 
 # return statement

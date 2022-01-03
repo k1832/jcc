@@ -94,9 +94,13 @@ void Tokenize() {
 
 /*** token processor ***/
 bool ConsumeIfReservedTokenMatches(char *op) {
-  if (token->kind != TK_RESERVED ||
-    token->len != strlen(op) ||
-    !StartsWith(token->str, op)) {
+  if (token->kind != TK_RESERVED) {
+    return false;
+  }
+  if (token->len != strlen(op)) {
+    return false;
+  }
+  if (!StartsWith(token->str, op)) {
     return false;
   }
 
