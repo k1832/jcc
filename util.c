@@ -4,6 +4,7 @@
 #include <stdarg.h>
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 
 /*** error ***/
 void ExitWithErrorAt(char *input, char *loc, char *fmt, ...) {
@@ -31,4 +32,11 @@ void ExitWithError(char *fmt, ...) {
 
 bool StartsWith(char *p, char *possible_suffix) {
   return !memcmp(p, possible_suffix, strlen(possible_suffix));
+}
+
+bool IsAlnumOrUnderscore(char c) {
+  if (isalnum(c)) return true;
+  if (c == '_') return true;
+
+  return false;
 }

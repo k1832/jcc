@@ -14,6 +14,7 @@ LVar *locals_linked_list_head;
 
 void ExitWithErrorAt(char *input, char *loc, char *fmt, ...);
 bool StartsWith(char *p, char *suffix);
+bool IsAlnumOrUnderscore(char c);
 
 /*** tokenizer ***/
 Token *ConnectAndGetNewToken(
@@ -40,6 +41,13 @@ void Tokenize() {
       continue;
     }
 
+    if (StartsWith(char_pointer, "return") &&
+      !IsAlnumOrUnderscore(char_pointer[6])) {
+      cur = ConnectAndGetNewToken(TK_RETURN, cur, char_pointer, 6);
+      char_pointer += 6;
+      continue;
+    }
+
     if (StartsWith(char_pointer, "==") ||
       StartsWith(char_pointer, "!=") ||
       StartsWith(char_pointer, "<=") ||
@@ -49,8 +57,14 @@ void Tokenize() {
       continue;
     }
 
-    if ('a' <= *char_pointer && *char_pointer <= 'z') {
-      cur = ConnectAndGetNewToken(TK_IDENT, cur, char_pointer++, 1);
+    if (('a' <= *char_pointer && *char_pointer <= 'z') ||
+      ('A' <= *char_pointer && *char_pointer <= 'Z')) {
+      char *start_at = char_pointer;
+      while (IsAlnumOrUnderscore(*char_pointer)) {
+        ++char_pointer;
+      }
+      cur = ConnectAndGetNewToken(
+        TK_IDENT, cur, start_at, char_pointer-start_at);
       continue;
     }
 
@@ -102,6 +116,15 @@ Token *ConsumeAndGetIfIdent() {
   return ident_token;
 }
 
+bool ConsumeIfReturn() {
+  if (token->kind != TK_RETURN) {
+    return false;
+  }
+
+  token = token->next;
+  return true;
+}
+
 void Expect(char *op) {
   if (ConsumeIfReservedTokenMatches(op)) return;
 
@@ -128,7 +151,7 @@ bool AtEOF() {
 LVar *find_local(Token *tok) {
   for (LVar *local = locals_linked_list_head; local; local = local->next) {
     if (local->len != tok->len) continue;
-    if (!StartsWith(local->name, tok->str)) continue;
+    if (memcmp(local->name, tok->str, local->len)) continue;
     return local;
   }
   return NULL;
@@ -142,8 +165,9 @@ LVar *NewLVar(Token *tok) {
     local->next = locals_linked_list_head;
     local->offset = locals_linked_list_head->offset + 8;
   } else {
-    local->offset = 0;
+    local->offset = 8;
   }
+  // TODO(k1832): exit when number of local variables exceeds the limit.
   locals_linked_list_head = local;
   return local;
 }
@@ -190,9 +214,14 @@ void Program() {
   statements[i] = NULL;
 }
 
-// Statement       = Expression ";"
+// Statement       = (Expression ";") | ("return" Expression ";")
 Node *Statement() {
-  Node *node = Expression();
+  Node *node;
+  if (ConsumeIfReturn()) {
+    node = NewBinary(ND_RETURN, Expression(), NULL);
+  } else {
+    node = Expression();
+  }
   Expect(";");
   return node;
 }

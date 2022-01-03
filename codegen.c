@@ -42,6 +42,15 @@ void PrintAssembly(Node *node) {
       printf("  mov [rax], rdi\n");
       printf("  push rdi\n");
       return;
+    case ND_RETURN:
+      printf("  # %s (%s): at line %d\n", __FILE__, __func__, __LINE__);
+      PrintAssembly(node->lhs);
+      printf("  pop rax\n");
+      printf("  mov rsp, rbp\n");
+      printf("  pop rbp\n");
+      // "ret" pops the address stored at the stack top, and jump there.
+      printf("  ret\n");
+      return;
   }
 
   PrintAssembly(node->lhs);

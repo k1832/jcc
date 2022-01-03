@@ -27,7 +27,6 @@ assert 255 "2+189-2+66;"
 
 # return calculation result of add and sub (with spaces)
 assert 41 "12 + 34 - 5;"
-assert 28 "12 - 34 + 50;"
 assert 81 "  52 + 34 - 5 ;"
 
 # return calculation result of expressions including "+-*/()"
@@ -37,7 +36,6 @@ assert 4 "(3+5)/2;"
 
 # include unary
 assert 1 "-5+6;"
-assert 15 "+5*(9-6);"
 assert 4 "(3+5)/+2;"
 
 # relationals
@@ -55,11 +53,14 @@ assert 0 "0>=1;"
 
 # handling one letter varialbes
 assert 3 "a=3;"
-assert 182 "a=18; z=200; z-a;"
 assert 14 "a=3; b=5*6-8; a+b/2;"
 assert 224 "a=112; a+a;"
 
 assert 15 "a=1; b=2; abc=a+b; abcd=12; abc+abcd;"
 assert 1 "zz=1; z=2; zz;"
+
+# return statement
+assert 3 "return 3; a=10; a;"
+assert 10 "abc=2; return abc*5;"
 
 echo OK
