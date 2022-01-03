@@ -10,6 +10,7 @@
 Token *token;       // token currently processed
 char *user_input;   // whole program
 Node *statements[100];
+LVar *locals_linked_list_head;
 
 void ExitWithErrorAt(char *input, char *loc, char *fmt, ...);
 bool StartsWith(char *p, char *suffix);
@@ -123,6 +124,32 @@ bool AtEOF() {
 /*** token processor ***/
 
 
+/*** local variable ***/
+LVar *find_local(Token *tok) {
+  for (LVar *local = locals_linked_list_head; local; local = local->next) {
+    if (tok->len != local->len) continue;
+    if (memcmp(tok->str, local->name, tok->len)) continue;
+    return local;
+  }
+  return NULL;
+}
+
+LVar *NewLVar(Token *tok) {
+  LVar *local = calloc(1, sizeof(LVar));
+  local->name = tok->str;
+  local->len = tok->len;
+  if (locals_linked_list_head) {
+    local->next = locals_linked_list_head;
+    local->offset = locals_linked_list_head->offset + 8;
+  } else {
+    local->offset = 0;
+  }
+  locals_linked_list_head = local;
+  return local;
+}
+/*** local variable ***/
+
+
 /*** AST parser ***/
 Node *NewNode(NodeKind kind) {
   Node *node = calloc(1, sizeof(Node));
@@ -140,13 +167,6 @@ Node *NewBinary(NodeKind kind, Node *lhs, Node *rhs) {
 Node *NewNodeNumber(int val) {
   Node *node = NewNode(ND_NUM);
   node->val = val;
-  return node;
-}
-
-Node *NewNodeLVAR(char *ident) {
-  Node *node = calloc(1, sizeof(Node));
-  node->kind = ND_LVAR;
-  node->offset = (*ident - 'a' + 1) * 8;
   return node;
 }
 
@@ -295,8 +315,18 @@ Node *Primary() {
     Expect(")");
     return node;
   }
+
   Token *tok = ConsumeAndGetIfIdent();
-  if (tok) return NewNodeLVAR(tok->str);
+  if (tok) {
+    Node *node = NewNode(ND_LVAR);
+    LVar *local = find_local(tok);
+    if (!local) {
+      // new variable
+      local = NewLVar(tok);
+    }
+    node->offset = local->offset;
+    return node;
+  }
 
   return NewNodeNumber(ExpectNumber());
 }

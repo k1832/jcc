@@ -50,10 +50,20 @@ struct Node {
 /*** AST definition ***/
 
 
+typedef struct LVar LVar;
+struct LVar {
+  LVar *next;
+  char *name;
+  int len;
+  int offset;
+};
+
+
 /*** GLOBAL VARIALBES ***/
 extern Token *token;       // token currently processed
 extern char *user_input;   // whole program
 extern Node *statements[100];
+extern LVar *locals_linked_list_head;   // link new token to head
 /*** GLOBAL VARIALBES ***/
 
 

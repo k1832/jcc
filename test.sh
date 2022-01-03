@@ -59,4 +59,7 @@ assert 182 "a=18; z=200; z-a;"
 assert 14 "a=3; b=5*6-8; a+b/2;"
 assert 224 "a=112; a+a;"
 
+assert 15 "a=1; b=2; abc=a+b; abcd=12; abc+abcd;"
+assert 1 "zz=1; z=2; zz;"
+
 echo OK
