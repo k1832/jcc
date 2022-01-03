@@ -82,7 +82,7 @@ void Tokenize() {
 bool ConsumeIfReservedTokenMatches(char *op) {
   if (token->kind != TK_RESERVED ||
     token->len != strlen(op) ||
-    memcmp(token->str, op, token->len)) {
+    !StartsWith(token->str, op)) {
     return false;
   }
 
@@ -127,8 +127,8 @@ bool AtEOF() {
 /*** local variable ***/
 LVar *find_local(Token *tok) {
   for (LVar *local = locals_linked_list_head; local; local = local->next) {
-    if (tok->len != local->len) continue;
-    if (memcmp(tok->str, local->name, tok->len)) continue;
+    if (local->len != tok->len) continue;
+    if (!StartsWith(local->name, tok->str)) continue;
     return local;
   }
   return NULL;
