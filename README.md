@@ -4,4 +4,5 @@ Big thanks to [compilerbook](https://www.sigbus.info/compilerbook)!
 
 ## Reference
 - https://www.sigbus.info/compilerbook
+- https://github.com/rui314/8cc
 - https://github.com/rui314/9cc
