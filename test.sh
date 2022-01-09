@@ -63,4 +63,13 @@ assert 1 "zz=1; z=2; zz;"
 assert 3 "return 3; a=10; a;"
 assert 10 "abc=2; return abc*5;"
 
+# if statement
+assert 0 "a=0; if(1>2) a=a+1; return a;"
+assert 1 "a=0; if(1<2) a=a+1; return a;"
+assert 0 "if(1<2) return 0; else return 1;"
+assert 1 "if(1>2) return 0; else return 1;"
+assert 1 "if(1>2) return 0; else if (1<2) return 1; else return 2;"
+assert 2 "if(1>2) return 0; else if (1>2) return 1; else return 2;"
+assert 2 "if(1>2) return 0; else if (1>2) return 1; else return 2;"
+
 echo OK

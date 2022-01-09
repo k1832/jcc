@@ -5,6 +5,8 @@
 
 void ExitWithError(char *fmt, ...);
 
+int label_num = 0;
+
 // Push the ADDRESS of node only if node is left-value.
 void PrintAssemblyForLeftVar(Node *node) {
   printf("  # %s (%s): at line %d\n", __FILE__, __func__, __LINE__);
@@ -50,6 +52,17 @@ void PrintAssembly(Node *node) {
       printf("  pop rbp\n");
       // "ret" pops the address stored at the stack top, and jump there.
       printf("  ret\n");
+      return;
+    case ND_IF:
+      printf("  # %s (%s): at line %d\n", __FILE__, __func__, __LINE__);
+      PrintAssembly(node->lhs);
+      printf("  pop rax\n");  // pop condition
+      printf("  cmp rax, 0\n");   // if condition is false
+      // max digits: 3
+      printf("  je .L%03d\n", label_num);
+      PrintAssembly(node->rhs);   // if condition is false, this will run
+      printf(".L%03d:\n", label_num);
+      ++label_num;
       return;
   }
 

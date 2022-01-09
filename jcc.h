@@ -7,11 +7,14 @@
 
 /*** Token definition ***/
 typedef enum {
+  // TODO(k1832): change TK_RESERVED to TK_OPERATER,
   TK_RESERVED,
   TK_IDENT,
   TK_NUM,
   TK_EOF,
   TK_RETURN,
+  TK_IF,
+  TK_ELSE,
 } TokenKind;
 
 typedef struct Token Token;
@@ -39,6 +42,8 @@ typedef enum {
   ND_ASSIGN,
   ND_NUM,
   ND_RETURN,
+  ND_IF,
+  ND_ELSE,
 } NodeKind;
 
 typedef struct Node Node;
@@ -66,6 +71,7 @@ extern Token *token;       // token currently processed
 extern char *user_input;   // whole program
 extern Node *statements[100];
 extern LVar *locals_linked_list_head;   // link new token to head
+extern int label_num;
 /*** GLOBAL VARIALBES ***/
 
 

@@ -48,6 +48,20 @@ void Tokenize() {
       continue;
     }
 
+    if (StartsWith(char_pointer, "if") &&
+      !IsAlnumOrUnderscore(char_pointer[2])) {
+      cur = ConnectAndGetNewToken(TK_IF, cur, char_pointer, 2);
+      char_pointer += 2;
+      continue;
+    }
+
+    if (StartsWith(char_pointer, "else") &&
+      !IsAlnumOrUnderscore(char_pointer[4])) {
+      cur = ConnectAndGetNewToken(TK_ELSE, cur, char_pointer, 4);
+      char_pointer += 4;
+      continue;
+    }
+
     if (StartsWith(char_pointer, "==") ||
       StartsWith(char_pointer, "!=") ||
       StartsWith(char_pointer, "<=") ||
@@ -120,8 +134,8 @@ Token *ConsumeAndGetIfIdent() {
   return ident_token;
 }
 
-bool ConsumeIfReturn() {
-  if (token->kind != TK_RETURN) {
+bool ConsumeIfKindMatches(TokenKind kind) {
+  if (token->kind != kind) {
     return false;
   }
 
@@ -218,14 +232,42 @@ void Program() {
   statements[i] = NULL;
 }
 
-// Statement       = (Expression ";") | ("return" Expression ";")
+// Statement =
+//  "return" Expression ";" |
+//  "if" "(" Expression ")" Statement ("else" Statement)?
+//  Expression ";" |
+
+// If AST Example
+// if (A) do_this();
+// else if (B) do_that();
+// else do_something();
+//
+//               else
+//   if                            else
+// A   do_this()         if                  do_something()
+//                     B   do_that()
+
 Node *Statement() {
-  Node *node;
-  if (ConsumeIfReturn()) {
-    node = NewBinary(ND_RETURN, Expression(), NULL);
-  } else {
-    node = Expression();
+  if (ConsumeIfKindMatches(TK_RETURN)) {
+    Node *lhs = Expression();
+    Expect(";");
+    return NewBinary(ND_RETURN, lhs, NULL);
   }
+
+  if (ConsumeIfKindMatches(TK_IF)) {
+    Expect("(");
+    Node *lhs = Expression();
+    Expect(")");
+
+    Node *if_node = NewBinary(ND_IF, lhs, Statement());
+    if (ConsumeIfKindMatches(TK_ELSE)) {
+      return NewBinary(ND_ELSE, if_node, Statement());
+    }
+
+    return if_node;
+  }
+
+  Node *node = Expression();
   Expect(";");
   return node;
 }
@@ -239,7 +281,7 @@ Node *Expression() {
 Node *Assignment() {
   Node *node = Equality();
   if (ConsumeIfReservedTokenMatches("=")) {
-    node = NewBinary(ND_ASSIGN, node, Assignment());
+    return NewBinary(ND_ASSIGN, node, Assignment());
   }
   return node;
 }
