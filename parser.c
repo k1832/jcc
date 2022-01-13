@@ -62,6 +62,13 @@ void Tokenize() {
       continue;
     }
 
+    if (StartsWith(char_pointer, "while") &&
+      !IsAlnumOrUnderscore(char_pointer[5])) {
+      cur = ConnectAndGetNewToken(TK_WHILE, cur, char_pointer, 5);
+      char_pointer += 5;
+      continue;
+    }
+
     if (StartsWith(char_pointer, "==") ||
       StartsWith(char_pointer, "!=") ||
       StartsWith(char_pointer, "<=") ||
@@ -235,6 +242,7 @@ void Program() {
 // Statement =
 //  "return" Expression ";" |
 //  "if" "(" Expression ")" Statement ("else" Statement)? |
+//  "while" "(" Expression ")" Statement
 //  Expression ";"
 
 Node *Statement() {
@@ -256,6 +264,13 @@ Node *Statement() {
     }
 
     return if_node;
+  }
+
+  if (ConsumeIfKindMatches(TK_WHILE)) {
+    Expect("(");
+    Node *lhs = Expression();
+    Expect(")");
+    return NewBinary(ND_WHILE, lhs, Statement());
   }
 
   Node *node = Expression();

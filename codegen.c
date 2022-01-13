@@ -73,6 +73,22 @@ void PrintAssembly(Node *node) {
 
       printf(".L%03d:\n", label_for_if_end);
       return;
+    case ND_WHILE:
+      printf("  # %s (%s): at line %d\n", __FILE__, __func__, __LINE__);
+      int label_for_while_start = label_num++;
+      int label_for_while_end = label_num++;
+      printf(".L%03d:\n", label_for_while_start);
+      PrintAssembly(node->lhs);
+      printf("  pop rax\n");  // pop condition
+      printf("  cmp rax, 0\n");
+      // if condition is false, skip the while statement
+      printf("  je .L%03d\n", label_for_while_end);
+
+      PrintAssembly(node->rhs);
+      printf("  jmp .L%03d\n", label_for_while_start);
+
+      printf(".L%03d:\n", label_for_while_end);
+      return;
   }
 
   PrintAssembly(node->lhs);
