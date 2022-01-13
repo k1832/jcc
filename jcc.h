@@ -52,8 +52,8 @@ struct Node {
   NodeKind kind;
   Node *lhs;
   Node *rhs;
-  Node *condition;        // for ND_IF
-  Node *if_statement;     // for ND_IF
+  Node *condition;        // for ND_IF, for ND_FOR
+  Node *body_statement;     // for ND_IF
   Node *else_statement;   // for ND_IF
   int val;
   int offset;

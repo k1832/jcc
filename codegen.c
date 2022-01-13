@@ -60,10 +60,10 @@ void PrintAssembly(Node *node) {
       PrintAssembly(node->condition);
       printf("  pop rax\n");  // pop condition
       printf("  cmp rax, 0\n");
-      // if condition is false, skip the if statement
+      // if condition is false, skip the if (body) statement
       printf("  je .L%03d\n", label_for_else_statement);
 
-      PrintAssembly(node->if_statement);
+      PrintAssembly(node->body_statement);
       printf("  jmp .L%03d\n", label_for_if_end);
 
       printf(".L%03d:\n", label_for_else_statement);

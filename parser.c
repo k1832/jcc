@@ -257,7 +257,7 @@ Node *Statement() {
     Expect("(");
     if_node->condition = Expression();
     Expect(")");
-    if_node->if_statement = Statement();
+    if_node->body_statement = Statement();
 
     if (ConsumeIfKindMatches(TK_ELSE)) {
       if_node->else_statement = Statement();
