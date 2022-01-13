@@ -43,7 +43,6 @@ typedef enum {
   ND_NUM,
   ND_RETURN,
   ND_IF,
-  ND_ELSE,
 } NodeKind;
 
 typedef struct Node Node;
@@ -51,6 +50,9 @@ struct Node {
   NodeKind kind;
   Node *lhs;
   Node *rhs;
+  Node *condition;        // for ND_IF
+  Node *if_statement;     // for ND_IF
+  Node *else_statement;   // for ND_IF
   int val;
   int offset;
 };

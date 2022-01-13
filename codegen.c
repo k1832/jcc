@@ -55,14 +55,23 @@ void PrintAssembly(Node *node) {
       return;
     case ND_IF:
       printf("  # %s (%s): at line %d\n", __FILE__, __func__, __LINE__);
-      PrintAssembly(node->lhs);
+      int label_for_else_statement = label_num++;
+      int label_for_if_end = label_num++;
+      PrintAssembly(node->condition);
       printf("  pop rax\n");  // pop condition
-      printf("  cmp rax, 0\n");   // if condition is false
-      // max digits: 3
-      printf("  je .L%03d\n", label_num);
-      PrintAssembly(node->rhs);   // if condition is false, this will run
-      printf(".L%03d:\n", label_num);
-      ++label_num;
+      printf("  cmp rax, 0\n");
+      // if condition is false, skip the if statement
+      printf("  je .L%03d\n", label_for_else_statement);
+
+      PrintAssembly(node->if_statement);
+      printf("  jmp .L%03d\n", label_for_if_end);
+
+      printf(".L%03d:\n", label_for_else_statement);
+      if (node->else_statement) {
+        PrintAssembly(node->else_statement);
+      }
+
+      printf(".L%03d:\n", label_for_if_end);
       return;
   }
 

@@ -74,5 +74,4 @@ assert 1 "a=0; if(1) a=1; return a;"
 assert 1 "a=-1; if(0) a=0; else if (1) a=1; else a=2; return a;"
 assert 2 "a=-1; if(0) a=0; else if (0) a=1; else a=2; return a;"
 
-
 echo OK

@@ -234,18 +234,8 @@ void Program() {
 
 // Statement =
 //  "return" Expression ";" |
-//  "if" "(" Expression ")" Statement ("else" Statement)?
-//  Expression ";" |
-
-// If AST Example
-// if (A) do_this();
-// else if (B) do_that();
-// else do_something();
-//
-//               else
-//   if                            else
-// A   do_this()         if                  do_something()
-//                     B   do_that()
+//  "if" "(" Expression ")" Statement ("else" Statement)? |
+//  Expression ";"
 
 Node *Statement() {
   if (ConsumeIfKindMatches(TK_RETURN)) {
@@ -255,13 +245,14 @@ Node *Statement() {
   }
 
   if (ConsumeIfKindMatches(TK_IF)) {
+    Node *if_node = NewNode(ND_IF);
     Expect("(");
-    Node *lhs = Expression();
+    if_node->condition = Expression();
     Expect(")");
+    if_node->if_statement = Statement();
 
-    Node *if_node = NewBinary(ND_IF, lhs, Statement());
     if (ConsumeIfKindMatches(TK_ELSE)) {
-      return NewBinary(ND_ELSE, if_node, Statement());
+      if_node->else_statement = Statement();
     }
 
     return if_node;
