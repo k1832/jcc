@@ -69,6 +69,13 @@ void Tokenize() {
       continue;
     }
 
+    if (StartsWith(char_pointer, "for") &&
+      !IsAlnumOrUnderscore(char_pointer[3])) {
+      cur = ConnectAndGetNewToken(TK_FOR, cur, char_pointer, 3);
+      char_pointer += 3;
+      continue;
+    }
+
     if (StartsWith(char_pointer, "==") ||
       StartsWith(char_pointer, "!=") ||
       StartsWith(char_pointer, "<=") ||
@@ -243,6 +250,7 @@ void Program() {
 //  "return" Expression ";" |
 //  "if" "(" Expression ")" Statement ("else" Statement)? |
 //  "while" "(" Expression ")" Statement
+//  "for" "(" Expression? ";" Expression? ";" Expression? ")" Statement |
 //  Expression ";"
 
 Node *Statement() {
@@ -271,6 +279,25 @@ Node *Statement() {
     Node *lhs = Expression();
     Expect(")");
     return NewBinary(ND_WHILE, lhs, Statement());
+  }
+
+  if (ConsumeIfKindMatches(TK_FOR)) {
+    Node *for_node = NewNode(ND_FOR);
+
+    Expect("(");
+    if (!ConsumeIfReservedTokenMatches(";")) {
+      for_node->initialization = Expression();
+      Expect(";");
+    }
+    if (!ConsumeIfReservedTokenMatches(";")) {
+      for_node->condition = Expression();
+      Expect(";");
+    }
+    for_node->iteration = Expression();
+    Expect(")");
+
+    for_node->body_statement = Statement();
+    return for_node;
   }
 
   Node *node = Expression();

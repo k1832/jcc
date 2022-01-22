@@ -89,6 +89,28 @@ void PrintAssembly(Node *node) {
 
       printf(".L%03d:\n", label_for_while_end);
       return;
+    case ND_FOR:
+      printf("  # %s (%s): at line %d\n", __FILE__, __func__, __LINE__);
+      int label_for_for_start = label_num++;
+      int label_for_for_end = label_num++;
+      PrintAssembly(node->initialization);
+      printf(".L%03d:\n", label_for_for_start);
+      if (node->condition == NULL) {
+        printf("  push 1\n");  // HACK: condition is always true.
+      } else {
+        PrintAssembly(node->condition);
+      }
+      printf("  pop rax\n");  // pop condition
+      printf("  cmp rax, 0\n");
+      // if condition is false, skip the for statement
+      printf("  je .L%03d\n", label_for_for_end);
+
+      PrintAssembly(node->body_statement);
+      PrintAssembly(node->iteration);
+      printf("  jmp .L%03d\n", label_for_for_start);
+
+      printf(".L%03d:\n", label_for_for_end);
+      return;
   }
 
   PrintAssembly(node->lhs);

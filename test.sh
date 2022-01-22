@@ -78,4 +78,9 @@ assert 2 "a=-1; if(0) a=0; else if (0) a=1; else a=2; return a;"
 assert 0 "a=0; while(0) a=a+1; return a;"
 assert 11 "a=0; while(a<=10) a=a+1; return a;"
 
+# for statement
+assert 128 "a=1; for(i=0; i<7; i=i+1) a=a*2; return a;"  # 2^7
+assert 5 "a=0; for(i=0; i<10; i=i+2) a=a+1; return a;"
+assert 1 "a=1; for(i=0; i<0; i=i+1) a=a+1; return a;"
+
 echo OK
