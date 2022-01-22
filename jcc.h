@@ -7,7 +7,6 @@
 
 /*** Token definition ***/
 typedef enum {
-  // TODO(k1832): change TK_RESERVED to TK_OPERATER,
   TK_RESERVED,
   TK_IDENT,
   TK_NUM,
@@ -47,6 +46,7 @@ typedef enum {
   ND_IF,
   ND_WHILE,
   ND_FOR,
+  ND_BLOCK,
 } NodeKind;
 
 typedef struct Node Node;
@@ -59,6 +59,7 @@ struct Node {
   Node *else_statement;   // for ND_IF
   Node *initialization;   // for ND_FOR
   Node *iteration;        // for ND_FOR
+  Node *next_in_block;    // for ND_BLOCK
   int val;
   int offset;
 };

@@ -96,7 +96,7 @@ void Tokenize() {
       continue;
     }
 
-    if (strchr(";=+-*/()><", *char_pointer)) {
+    if (strchr(";=+-*/()><{}", *char_pointer)) {
       cur = ConnectAndGetNewToken(TK_RESERVED, cur, char_pointer++, 1);
       continue;
     }
@@ -251,6 +251,7 @@ void Program() {
 //  "if" "(" Expression ")" Statement ("else" Statement)? |
 //  "while" "(" Expression ")" Statement
 //  "for" "(" Expression? ";" Expression? ";" Expression? ")" Statement |
+//  "{" Statement* "}" |
 //  Expression ";"
 
 Node *Statement() {
@@ -298,6 +299,16 @@ Node *Statement() {
 
     for_node->body_statement = Statement();
     return for_node;
+  }
+
+  if (ConsumeIfReservedTokenMatches("{")) {
+    Node *nd_block =  NewNode(ND_BLOCK);
+    Node *head = nd_block;
+    while (!ConsumeIfReservedTokenMatches("}")) {
+      nd_block->next_in_block = Statement();
+      nd_block = nd_block->next_in_block;
+    }
+    return head;
   }
 
   Node *node = Expression();

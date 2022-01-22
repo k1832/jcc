@@ -111,6 +111,15 @@ void PrintAssembly(Node *node) {
 
       printf(".L%03d:\n", label_for_for_end);
       return;
+    case ND_BLOCK:
+      printf("  # %s (%s): at line %d\n", __FILE__, __func__, __LINE__);
+      node = node->next_in_block;
+      while (node) {
+        PrintAssembly(node);
+        printf("  pop rax\n");  // pop statement result
+        node = node->next_in_block;
+      }
+      return;
   }
 
   PrintAssembly(node->lhs);
