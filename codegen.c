@@ -6,6 +6,7 @@
 void ExitWithError(char *fmt, ...);
 
 int label_num = 0;
+const int label_digit = 5;
 
 // Push the ADDRESS of node only if node is left-value.
 void PrintAssemblyForLeftVar(Node *node) {
@@ -61,40 +62,40 @@ void PrintAssembly(Node *node) {
       printf("  pop rax\n");  // pop condition
       printf("  cmp rax, 0\n");
       // if condition is false, skip the if (body) statement
-      printf("  je .L%03d\n", label_for_else_statement);
+      printf("  je .L%0*d\n", label_digit, label_for_else_statement);
 
       PrintAssembly(node->body_statement);
-      printf("  jmp .L%03d\n", label_for_if_end);
+      printf("  jmp .L%0*d\n", label_digit, label_for_if_end);
 
-      printf(".L%03d:\n", label_for_else_statement);
+      printf(".L%0*d:\n", label_digit, label_for_else_statement);
       if (node->else_statement) {
         PrintAssembly(node->else_statement);
       }
 
-      printf(".L%03d:\n", label_for_if_end);
+      printf(".L%0*d:\n", label_digit, label_for_if_end);
       return;
     case ND_WHILE:
       printf("  # %s (%s): at line %d\n", __FILE__, __func__, __LINE__);
       int label_for_while_start = label_num++;
       int label_for_while_end = label_num++;
-      printf(".L%03d:\n", label_for_while_start);
+      printf(".L%0*d:\n", label_digit, label_for_while_start);
       PrintAssembly(node->lhs);
       printf("  pop rax\n");  // pop condition
       printf("  cmp rax, 0\n");
       // if condition is false, skip the while statement
-      printf("  je .L%03d\n", label_for_while_end);
+      printf("  je .L%0*d\n", label_digit, label_for_while_end);
 
       PrintAssembly(node->rhs);
-      printf("  jmp .L%03d\n", label_for_while_start);
+      printf("  jmp .L%0*d\n", label_digit, label_for_while_start);
 
-      printf(".L%03d:\n", label_for_while_end);
+      printf(".L%0*d:\n", label_digit, label_for_while_end);
       return;
     case ND_FOR:
       printf("  # %s (%s): at line %d\n", __FILE__, __func__, __LINE__);
       int label_for_for_start = label_num++;
       int label_for_for_end = label_num++;
       PrintAssembly(node->initialization);
-      printf(".L%03d:\n", label_for_for_start);
+      printf(".L%0*d:\n", label_digit, label_for_for_start);
       if (node->condition == NULL) {
         printf("  push 1\n");  // HACK: condition is always true.
       } else {
@@ -103,13 +104,13 @@ void PrintAssembly(Node *node) {
       printf("  pop rax\n");  // pop condition
       printf("  cmp rax, 0\n");
       // if condition is false, skip the for statement
-      printf("  je .L%03d\n", label_for_for_end);
+      printf("  je .L%0*d\n", label_digit, label_for_for_end);
 
       PrintAssembly(node->body_statement);
       PrintAssembly(node->iteration);
-      printf("  jmp .L%03d\n", label_for_for_start);
+      printf("  jmp .L%0*d\n", label_digit, label_for_for_start);
 
-      printf(".L%03d:\n", label_for_for_end);
+      printf(".L%0*d:\n", label_digit, label_for_for_end);
       return;
     case ND_BLOCK:
       printf("  # %s (%s): at line %d\n", __FILE__, __func__, __LINE__);
