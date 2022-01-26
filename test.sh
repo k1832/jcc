@@ -101,6 +101,7 @@ assert 13 "main() {return fib(7);} fib(n) {if(n<=1) return n; else return fib(n-
 assert 120 "main() {return combination(10, 3);} combination(n, r) {if(n==r) return 1; if(r==0) return 1; return combination(n-1, r-1) + combination(n-1, r);}"
 
 assert 21 "main() {return ten_sum(1,2,3,4,5,6);} ten_sum(a,b,c,d,e,f) {return a+b+c+d+e+f;}"
+assert 15 "main() {return ten_sum(1,2,3,4,5,6,7,8,9);} ten_sum(a,b,c,d,e,f,g,h,i) {return a+b+c+d+e+f-g-h+i;}"
 assert 25 "main() {return ten_sum(1,2,3,4,5,6,7,8,9,10);} ten_sum(a,b,c,d,e,f,g,h,i,j) {return a+b+c+d+e+f-g-h+i+j;}"
 
 # mod (%)
