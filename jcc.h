@@ -50,6 +50,7 @@ typedef enum {
   ND_SUB,
   ND_MUL,
   ND_DIV,
+  ND_MOD,
   ND_EQ,
   ND_NEQ,
   ND_LT,
@@ -82,9 +83,11 @@ struct Node {
 
   char *func_name;
   int func_name_len;
-  LVar *locals_linked_list_head;   // link new token to head
+  LVar *locals_linked_list_head;    // link new token to head
+  LVar *params_linked_list_head;    // link new token to head
   int next_offset_in_block;
-  int argc;                             // for ND_FUNC_CALL, ND_FUNC_DEF
+  int argc;                             // for ND_FUNC_CALL, ND_FUNC_DECLARATION
+  int num_parameters;                   // for ND_FUNC_DECLARATION
   int val;
   int offset;
 };

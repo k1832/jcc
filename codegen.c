@@ -24,6 +24,8 @@ void PrintAssemblyForLeftVar(Node *node) {
 
 // Push processed result (VALUE) of node.
 void PrintAssembly(Node *node) {
+  // TODO(k1832): Replace switch-case with if.
+  // scope is too large when switch-case is used.
   switch (node->kind) {
     case ND_NUM:
       printf("  # %s (%s): at line %d\n", __FILE__, __func__, __LINE__);
@@ -127,22 +129,22 @@ void PrintAssembly(Node *node) {
 
       // Push arguments after the first 6 arguments
       // reversely to stack
-      int call_argv_i = node->argc;
+      int argv_i = node->argc;
       ArgsForCall *args_for_call = node->args_linked_list_head;
-      while (call_argv_i > 6) {
+      while (argv_i > 6) {
         PrintAssembly(args_for_call->node);
         // leave the result in stack
 
         args_for_call = args_for_call->next;
-        --call_argv_i;
+        --argv_i;
       }
-      while (call_argv_i) {
+      while (argv_i) {
         // Transfer results to registers specified by ABI.
         PrintAssembly(args_for_call->node);
-        printf("  pop %s\n", registers[call_argv_i - 1]);
+        printf("  pop %s\n", registers[argv_i - 1]);
 
         args_for_call = args_for_call->next;
-        --call_argv_i;
+        --argv_i;
       }
       // TODO(k1832): 16byte allignment?
       printf("  call %.*s\n", node->func_name_len, node->func_name);
@@ -159,22 +161,22 @@ void PrintAssembly(Node *node) {
       printf("  sub rsp, %d\n", num_variables * bytes_per_variable);
 
       // Transfer argument values into stack frame
-      LVar *local = node->locals_linked_list_head;
-      int argv_i = node->argc;
-      while (argv_i > 6) {
+      LVar *param = node->params_linked_list_head;
+      int param_i = node->num_parameters;
+      while (param_i > 6) {
         // No need to transfer values for arguments after the first 6 arguments
         // because they are allowed to be out of the stack frame and
         // will be accessed with negative offset.
-        local = local->next;
-        --argv_i;
+        param = param->next;
+        --param_i;
       }
 
-      while (argv_i) {
+      while (param_i) {
         printf("  mov rax, rbp\n");
-        printf("  sub rax, %d\n", local->offset);
-        printf("  mov [rax], %s\n", registers[argv_i - 1]);
-        local = local->next;
-        --argv_i;
+        printf("  sub rax, %d\n", param->offset);
+        printf("  mov [rax], %s\n", registers[param_i - 1]);
+        param = param->next;
+        --param_i;
       }
 
       node = node->next_in_block;
@@ -214,6 +216,12 @@ void PrintAssembly(Node *node) {
       printf("  # %s (%s): at line %d\n", __FILE__, __func__, __LINE__);
       printf("  cqo\n");
       printf("  idiv rdi\n");
+      break;
+    case ND_MOD:
+      printf("  # %s (%s): at line %d\n", __FILE__, __func__, __LINE__);
+      printf("  cqo\n");
+      printf("  idiv rdi\n");
+      printf("  mov rax, rdx\n");
       break;
     case ND_EQ:
       printf("  # %s (%s): at line %d\n", __FILE__, __func__, __LINE__);

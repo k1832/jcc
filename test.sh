@@ -100,4 +100,11 @@ assert 8 "main() {return fib(6);} fib(n) {if(n<=1) return n; else return fib(n-1
 assert 13 "main() {return fib(7);} fib(n) {if(n<=1) return n; else return fib(n-1) + fib(n-2);}"
 assert 120 "main() {return combination(10, 3);} combination(n, r) {if(n==r) return 1; if(r==0) return 1; return combination(n-1, r-1) + combination(n-1, r);}"
 
+# mod (%)
+assert 0 "main() {10%5;}"
+assert 2 "main() {10%4;}"
+assert 4 "main() {3+5%2;}"
+assert 0 "main() {return is_prime(10);} is_prime(n) {if(n==2) return 1; for(i=2; i*i<=n; i=i+1) {if(n%i==0) return 0;} return 1;}"
+assert 1 "main() {return is_prime(7);} is_prime(n) {if(n==2) return 1; for(i=2; i*i<=n; i=i+1) {if(n%i==0) return 0;} return 1;}"
+
 echo OK

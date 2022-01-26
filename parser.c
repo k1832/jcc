@@ -96,7 +96,7 @@ void Tokenize() {
       continue;
     }
 
-    if (strchr(";=+-*/()><{},", *char_pointer)) {
+    if (strchr(";=+-*/()><{},%", *char_pointer)) {
       cur = ConnectAndGetNewToken(TK_RESERVED, cur, char_pointer++, 1);
       continue;
     }
@@ -210,6 +210,32 @@ LVar *NewLVar(Node *node, Token *tok) {
   node->next_offset_in_block += 8;
   node->locals_linked_list_head = local;
   return local;
+}
+
+void NewParam(Node *node, Token *tok) {
+  // Create a new local variable and
+  // link it to the linked-list of parameters.
+  // This linked list is used for
+  // transfering values into stack frame.
+  ++(node->argc);
+  ++(node->num_parameters);
+  LVar *local = NewLVar(node, tok);
+
+  if (node->argc > 6) {
+    // According to the ABI,
+    // arguments after the first 6 arguments
+    // should be pushed to stack reversely
+    // before calling a function.
+    // So offsets for them become negative values.
+    local->offset = -(8 * (node->argc - 7) + 16);
+    node->next_offset_in_block -= 8;
+  }
+
+  // Link new variable to linked-list.
+  if (node->params_linked_list_head) {
+    local->next = node->params_linked_list_head;
+  }
+  node->params_linked_list_head = local;
 }
 /*** local variable ***/
 
@@ -346,24 +372,14 @@ Node *Statement() {
     nd_func_dclr->func_name_len = tok_func_name->len;
 
     if (ConsumeIfReservedTokenMatches("(")) {
-      Token *ident_arg = ConsumeAndGetIfIdent();
-      while (ident_arg) {
-        ++(nd_func_dclr->argc);
-        LVar *local = NewLVar(nd_func_dclr, ident_arg);
+      Token *ident_param = ConsumeAndGetIfIdent();
+      while (ident_param) {
+        NewParam(nd_func_dclr, ident_param);
 
-        if (nd_func_dclr->argc > 6) {
-          // According to the ABI,
-          // arguments after the first 6 arguments
-          // should be pushed to stack reversely
-          // before calling a function.
-          // So offsets for them become negative values.
-          local->offset = -(8 * (nd_func_dclr->argc - 7) + 16);
-          nd_func_dclr->next_offset_in_block -= 8;
-        }
         if (ConsumeIfReservedTokenMatches(",")) {
           // TODO(k1832): Consider a behavior
-          // when there is no argument after a comma.
-          ident_arg = ConsumeAndGetIfIdent();
+          // when there is no parameter after a comma.
+          ident_param = ConsumeAndGetIfIdent();
         } else {
           break;
         }
@@ -473,7 +489,7 @@ Node *Add() {
   }
 }
 
-// MulDiv     = Unary ("*" Unary | "/" Unary)*
+// MulDiv     = Unary ("*" Unary | "/" Unary | "%" Unary)*
 Node *MulDiv() {
   Node *node = Unary();
   for (;;) {
@@ -484,6 +500,11 @@ Node *MulDiv() {
 
     if (ConsumeIfReservedTokenMatches("/")) {
       node = NewBinary(ND_DIV, node, Unary());
+      continue;
+    }
+
+    if (ConsumeIfReservedTokenMatches("%")) {
+      node = NewBinary(ND_MOD, node, Unary());
       continue;
     }
 
