@@ -21,26 +21,11 @@ int main(int argc, char **argv) {
   printf(".intel_syntax noprefix\n");
   printf(".globl main\n");
 
-  // printf("main:\n");
-  // // prologue
-  // printf("  # %s (%s): at line %d\n", __FILE__, __func__, __LINE__);
-  // printf("  push rbp\n");
-  // printf("  mov rbp, rsp\n");
-  // const int num_variables = 26;
-  // const int bytes_per_variable = 8;
-  // printf("  sub rsp, %d\n", num_variables * bytes_per_variable);
-
   for (int i = 0; statements[i]; ++i) {
     printf("  # statements[%d] starts.\n", i);
     PrintAssembly(statements[i]);
     printf("  pop rax\n");
   }
 
-  // // epilogue
-  // printf("  # %s (%s): at line %d\n", __FILE__, __func__, __LINE__);
-  // printf("  mov rsp, rbp\n");
-  // printf("  pop rbp\n");
-  // // "ret" pops the address stored at the stack top, and jump there.
-  // printf("  ret\n");
   return 0;
 }
