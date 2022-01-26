@@ -5,7 +5,7 @@
 #include "./jcc.h"
 
 void *Tokenize();
-void Program();
+void BuildAST();
 void PrintAssembly(Node *node);
 
 int main(int argc, char **argv) {
@@ -16,7 +16,7 @@ int main(int argc, char **argv) {
 
   user_input = argv[1];
   Tokenize();
-  Program();
+  BuildAST();
 
   printf(".intel_syntax noprefix\n");
   printf(".globl main\n");

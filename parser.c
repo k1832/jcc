@@ -271,7 +271,7 @@ Node *NewNodeNumber(int val) {
   return node;
 }
 
-void Program();
+void BuildAST();
 Node *Statement();
 Node *Expression();
 Node *Assignment();
@@ -282,8 +282,8 @@ Node *MulDiv();
 Node *Unary();
 Node *Primary();
 
-// Program    = Statement*
-void Program() {
+// BuildAST    = Statement*
+void BuildAST() {
   int i = 0;
   while (!AtEOF()) {
     statements[i++] = Statement();
