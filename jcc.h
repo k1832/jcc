@@ -30,6 +30,21 @@ struct Token {
 
 
 /*** AST definition ***/
+typedef struct LVar LVar;
+struct LVar {
+  LVar *next;
+  char *name;
+  int len;
+  int offset;
+};
+
+typedef struct Node Node;
+typedef struct ArgsForCall ArgsForCall;
+struct ArgsForCall {
+  Node *node;
+  ArgsForCall *next;
+};
+
 typedef enum {
   ND_ADD,
   ND_SUB,
@@ -47,39 +62,39 @@ typedef enum {
   ND_WHILE,
   ND_FOR,
   ND_BLOCK,
+  ND_FUNC_CALL,
+  ND_FUNC_DECLARATION,
 } NodeKind;
 
-typedef struct Node Node;
 struct Node {
   NodeKind kind;
   Node *lhs;
   Node *rhs;
-  Node *condition;        // for ND_IF, for ND_FOR
-  Node *body_statement;     // for ND_IF
-  Node *else_statement;   // for ND_IF
-  Node *initialization;   // for ND_FOR
-  Node *iteration;        // for ND_FOR
-  Node *next_in_block;    // for ND_BLOCK
+  Node *condition;                      // for ND_IF, for ND_FOR
+  Node *body_statement;                 // for ND_IF
+  Node *else_statement;                 // for ND_IF
+  Node *initialization;                 // for ND_FOR
+  Node *iteration;                      // for ND_FOR
+  Node *next_in_block;                  // for ND_BLOCK
+
+  // for ND_FUNC_CALL, link new token to head
+  ArgsForCall *args_linked_list_head;
+
+  char *func_name;
+  int func_name_len;
+  LVar *locals_linked_list_head;   // link new token to head
+  int next_offset_in_block;
+  int argc;                             // for ND_FUNC_CALL, ND_FUNC_DEF
   int val;
   int offset;
 };
 /*** AST definition ***/
 
 
-typedef struct LVar LVar;
-struct LVar {
-  LVar *next;
-  char *name;
-  int len;
-  int offset;
-};
-
-
 /*** GLOBAL VARIALBES ***/
 extern Token *token;       // token currently processed
 extern char *user_input;   // whole program
 extern Node *statements[100];
-extern LVar *locals_linked_list_head;   // link new token to head
 extern int label_num;
 /*** GLOBAL VARIALBES ***/
 

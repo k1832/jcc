@@ -7,6 +7,7 @@ void ExitWithError(char *fmt, ...);
 
 int label_num = 0;
 const int label_digit = 5;
+const char registers[6][4] = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
 
 // Push the ADDRESS of node only if node is left-value.
 void PrintAssemblyForLeftVar(Node *node) {
@@ -120,6 +121,73 @@ void PrintAssembly(Node *node) {
         printf("  pop rax\n");  // pop statement result
         node = node->next_in_block;
       }
+      return;
+    case ND_FUNC_CALL:
+      printf("  # %s (%s): at line %d\n", __FILE__, __func__, __LINE__);
+
+      // Push arguments after the first 6 arguments
+      // reversely to stack
+      int call_argv_i = node->argc;
+      ArgsForCall *args_for_call = node->args_linked_list_head;
+      while (call_argv_i > 6) {
+        PrintAssembly(args_for_call->node);
+        // leave the result in stack
+
+        args_for_call = args_for_call->next;
+        --call_argv_i;
+      }
+      while (call_argv_i) {
+        // Transfer results to registers specified by ABI.
+        PrintAssembly(args_for_call->node);
+        printf("  pop %s\n", registers[call_argv_i - 1]);
+
+        args_for_call = args_for_call->next;
+        --call_argv_i;
+      }
+      // TODO(k1832): 16byte allignment?
+      printf("  call %.*s\n", node->func_name_len, node->func_name);
+      printf("  push rax\n");
+      return;
+    case ND_FUNC_DECLARATION:
+      printf("  # %s (%s): at line %d\n", __FILE__, __func__, __LINE__);
+      printf("%.*s:\n", node->func_name_len, node->func_name);
+      // prologue
+      printf("  push rbp\n");
+      printf("  mov rbp, rsp\n");
+      const int num_variables = 26;
+      const int bytes_per_variable = 8;
+      printf("  sub rsp, %d\n", num_variables * bytes_per_variable);
+
+      // Transfer argument values into stack frame
+      LVar *local = node->locals_linked_list_head;
+      int argv_i = node->argc;
+      while (argv_i > 6) {
+        // No need to transfer values for arguments after the first 6 arguments
+        // because they are allowed to be out of the stack frame and
+        // will be accessed with negative offset.
+        local = local->next;
+        --argv_i;
+      }
+
+      while (argv_i) {
+        printf("  mov rax, rbp\n");
+        printf("  sub rax, %d\n", local->offset);
+        printf("  mov [rax], %s\n", registers[argv_i - 1]);
+        local = local->next;
+        --argv_i;
+      }
+
+      node = node->next_in_block;
+      while (node) {
+        PrintAssembly(node);
+        printf("  pop rax\n");
+        node = node->next_in_block;
+      }
+      // epilogue
+      printf("  mov rsp, rbp\n");
+      printf("  pop rbp\n");
+      // "ret" pops the address stored at the stack top, and jump there.
+      printf("  ret\n");
       return;
   }
 

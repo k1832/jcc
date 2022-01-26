@@ -10,7 +10,7 @@
 Token *token;       // token currently processed
 char *user_input;   // whole program
 Node *statements[100];
-LVar *locals_linked_list_head;
+Node *nd_func_dclr_in_progress;
 
 void ExitWithErrorAt(char *input, char *loc, char *fmt, ...);
 bool StartsWith(char *p, char *suffix);
@@ -96,7 +96,7 @@ void Tokenize() {
       continue;
     }
 
-    if (strchr(";=+-*/()><{}", *char_pointer)) {
+    if (strchr(";=+-*/()><{},", *char_pointer)) {
       cur = ConnectAndGetNewToken(TK_RESERVED, cur, char_pointer++, 1);
       continue;
     }
@@ -121,14 +121,18 @@ void Tokenize() {
 
 
 /*** token processor ***/
-bool ConsumeIfReservedTokenMatches(char *op) {
+bool ReservedTokenMatches(char *op) {
   if (token->kind != TK_RESERVED) {
     return false;
   }
   if (token->len != strlen(op)) {
     return false;
   }
-  if (!StartsWith(token->str, op)) {
+  return StartsWith(token->str, op);
+}
+
+bool ConsumeIfReservedTokenMatches(char *op) {
+  if (!ReservedTokenMatches(op)) {
     return false;
   }
 
@@ -180,8 +184,12 @@ bool AtEOF() {
 
 
 /*** local variable ***/
-LVar *GetDeclaredLocal(Token *tok) {
-  for (LVar *local = locals_linked_list_head; local; local = local->next) {
+LVar *GetDeclaredLocal(Node *node, Token *tok) {
+  for (
+    LVar *local = node->locals_linked_list_head;
+    local;
+    local = local->next
+  ) {
     if (local->len != tok->len) continue;
     if (memcmp(local->name, tok->str, local->len)) continue;
     return local;
@@ -189,21 +197,32 @@ LVar *GetDeclaredLocal(Token *tok) {
   return NULL;
 }
 
-LVar *NewLVar(Token *tok) {
+LVar *NewLVar(Node *node, Token *tok) {
   LVar *local = calloc(1, sizeof(LVar));
   local->name = tok->str;
   local->len = tok->len;
-  if (locals_linked_list_head) {
-    local->next = locals_linked_list_head;
-    local->offset = locals_linked_list_head->offset + 8;
-  } else {
-    local->offset = 8;
+  if (!node->locals_linked_list_head) {
+    node->next_offset_in_block = 8;
   }
   // TODO(k1832): exit when number of local variables exceeds the limit.
-  locals_linked_list_head = local;
+  local->next = node->locals_linked_list_head;
+  local->offset = node->next_offset_in_block;
+  node->next_offset_in_block += 8;
+  node->locals_linked_list_head = local;
   return local;
 }
 /*** local variable ***/
+
+
+/*** function call ***/
+ArgsForCall *NewArg(Node *nd_func_call, Node *new_arg) {
+  ArgsForCall *arg = calloc(1, sizeof(ArgsForCall));
+  arg->node = new_arg;
+  arg->next = nd_func_call->args_linked_list_head;
+  nd_func_call->args_linked_list_head = arg;
+  return arg;
+}
+/*** function call ***/
 
 
 /*** AST parser ***/
@@ -246,12 +265,15 @@ void Program() {
   statements[i] = NULL;
 }
 
+// TODO(k1832): How to write comma-separated arguments for a function in EBNF?
+
 // Statement =
 //  "return" Expression ";" |
 //  "if" "(" Expression ")" Statement ("else" Statement)? |
 //  "while" "(" Expression ")" Statement
 //  "for" "(" Expression? ";" Expression? ";" Expression? ")" Statement |
 //  "{" Statement* "}" |
+//  identifier "(" identifier* ")" "{" Statement* "}" |
 //  Expression ";"
 
 Node *Statement() {
@@ -311,6 +333,61 @@ Node *Statement() {
     return head;
   }
 
+  // Function declaration. Lookahead if there is a curly bracket.
+  // "token" should be restored to the current
+  // if it's not a function declaration.
+  Token *current = token;
+  Token *tok_func_name = ConsumeAndGetIfIdent();
+  if (tok_func_name) {
+    // This is not surely function declaration
+    // until you see a curly bracket.
+    Node *nd_func_dclr = NewNode(ND_FUNC_DECLARATION);
+    nd_func_dclr->func_name = tok_func_name->str;
+    nd_func_dclr->func_name_len = tok_func_name->len;
+
+    if (ConsumeIfReservedTokenMatches("(")) {
+      Token *ident_arg = ConsumeAndGetIfIdent();
+      while (ident_arg) {
+        ++(nd_func_dclr->argc);
+        LVar *local = NewLVar(nd_func_dclr, ident_arg);
+
+        if (nd_func_dclr->argc > 6) {
+          // According to the ABI,
+          // arguments after the first 6 arguments
+          // should be pushed to stack reversely
+          // before calling a function.
+          // So offsets for them become negative values.
+          local->offset = -(8 * (nd_func_dclr->argc - 7) + 16);
+          nd_func_dclr->next_offset_in_block -= 8;
+        }
+        if (ConsumeIfReservedTokenMatches(",")) {
+          // TODO(k1832): Consider a behavior
+          // when there is no argument after a comma.
+          ident_arg = ConsumeAndGetIfIdent();
+        } else {
+          break;
+        }
+      }
+      Expect(")");
+
+      if (ConsumeIfReservedTokenMatches("{")) {
+        // Function declaration.
+        nd_func_dclr_in_progress = nd_func_dclr;
+
+        Node *node_in_block = nd_func_dclr;
+        while (!ConsumeIfReservedTokenMatches("}")) {
+          node_in_block->next_in_block = Statement();
+          node_in_block = node_in_block->next_in_block;
+        }
+        // Reset the node that's currently being processed function.
+        nd_func_dclr_in_progress = NULL;
+
+        return nd_func_dclr;
+      }
+    }
+  }
+
+  token = current;
   Node *node = Expression();
   Expect(";");
   return node;
@@ -427,7 +504,12 @@ Node *Unary() {
   return Primary();
 }
 
-// Primary    = number | identifier | "(" Expression ")"
+// TODO(k1832): How to write comma-separated arguments for a function in EBNF?
+
+// Primary =
+//  "(" Expression ")" |
+//  identifier ( "(" Expression* ")" )? |
+//  number
 Node *Primary() {
   if (ConsumeIfReservedTokenMatches("(")) {
     Node *node = Expression();
@@ -438,11 +520,25 @@ Node *Primary() {
   Token *tok = ConsumeAndGetIfIdent();
   if (tok) {
     // identifier
+    if (ConsumeIfReservedTokenMatches("(")) {
+      Node *nd_func_call = NewNode(ND_FUNC_CALL);
+      nd_func_call->func_name = tok->str;
+      nd_func_call->func_name_len = tok->len;
+      while (!ConsumeIfReservedTokenMatches(")")) {
+        ++(nd_func_call->argc);
+        NewArg(nd_func_call, Expression());
+        ConsumeIfReservedTokenMatches(",");
+        // TODO(k1832): Consider a behavior
+        // when there is no argument after a comma.
+      }
+      return nd_func_call;
+    }
+
     Node *node = NewNode(ND_LVAR);
-    LVar *local = GetDeclaredLocal(tok);
+    LVar *local = GetDeclaredLocal(nd_func_dclr_in_progress, tok);
     if (!local) {
       // new variable
-      local = NewLVar(tok);
+      local = NewLVar(nd_func_dclr_in_progress, tok);
     }
     node->offset = local->offset;
     return node;
