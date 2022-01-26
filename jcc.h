@@ -97,6 +97,7 @@ struct Node {
 /*** GLOBAL VARIALBES ***/
 extern Token *token;       // token currently processed
 extern char *user_input;   // whole program
+// TODO(k1832): Replace this with a linked-list
 extern Node *statements[100];
 extern int label_num;
 /*** GLOBAL VARIALBES ***/
