@@ -4,6 +4,7 @@
         "dockerfile": "Dockerfile"
     },
     "extensions": [
-        "ms-vscode.cpptools-extension-pack"
+        "ms-vscode.cpptools-extension-pack",
+        "ms-vsliveshare.vsliveshare"
     ]
 }
