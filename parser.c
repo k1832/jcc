@@ -96,7 +96,7 @@ void Tokenize() {
       continue;
     }
 
-    if (strchr(";=+-*/()><{},%", *char_pointer)) {
+    if (strchr(";=+-*/()><{},%&", *char_pointer)) {
       cur = ConnectAndGetNewToken(TK_RESERVED, cur, char_pointer++, 1);
       continue;
     }
@@ -512,8 +512,19 @@ Node *MulDiv() {
   }
 }
 
-// Unary   = ("+" | "-")? Primary
+// Unary   =
+//  ("+" | "-")? Primary |
+//  "*" Unary |
+//  "&" Unary
 Node *Unary() {
+  if (ConsumeIfReservedTokenMatches("*")) {
+    return NewBinary(ND_DEREF, Unary(), NULL);
+  }
+
+  if (ConsumeIfReservedTokenMatches("&")) {
+    return NewBinary(ND_ADDR, Unary(), NULL);
+  }
+
   if (ConsumeIfReservedTokenMatches("+")) {
     return Primary();
   }

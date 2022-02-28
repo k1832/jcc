@@ -207,6 +207,21 @@ void PrintAssembly(Node *node) {
     return;
   }
 
+  if (node->kind == ND_ADDR) {
+    printf("  # %s (%s): at line %d\n", __FILE__, __func__, __LINE__);
+    PrintAssemblyForLeftVar(node->lhs);
+    return;
+  }
+
+  if (node->kind == ND_DEREF) {
+    printf("  # %s (%s): at line %d\n", __FILE__, __func__, __LINE__);
+    PrintAssembly(node->lhs);
+    printf("  pop rax\n");
+    printf("  mov rax, [rax]\n");
+    printf("  push rax\n");
+    return;
+  }
+
   PrintAssembly(node->lhs);
   PrintAssembly(node->rhs);
 

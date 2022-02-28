@@ -111,4 +111,10 @@ assert 4 "main() {3+5%2;}"
 assert 0 "main() {return is_prime(10);} is_prime(n) {if(n==2) return 1; for(i=2; i*i<=n; i=i+1) {if(n%i==0) return 0;} return 1;}"
 assert 1 "main() {return is_prime(7);} is_prime(n) {if(n==2) return 1; for(i=2; i*i<=n; i=i+1) {if(n%i==0) return 0;} return 1;}"
 
+# accessing address and dereferecing using adress (*, &)
+assert 3 "main() {x=3; y=&x; return *y;}"
+assert 10 "main() {x=10; y=&x; return *y;}"
+assert 3 "main() {x=3; y=5; z=&y+8; return *z;}"
+assert 10 "main() {x=10; y=5; z=&y+8; return *z;}"
+
 echo OK
