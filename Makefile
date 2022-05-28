@@ -3,9 +3,8 @@ SRCS=$(wildcard *.c)
 HDRS=$(wildcard *.h)
 OBJS=$(SRCS:.c=.o)
 
-jcc: $(OBJS)
-	make style
-	$(CC) -o jcc $(OBJS) $(LDFLAGS)
+jcc: style $(OBJS)
+	$(CC) -o $@ $(OBJS) $(LDFLAGS)
 
 $(OBJS): $(HDRS)
 
@@ -13,7 +12,7 @@ test: jcc
 	./test.sh
 
 style: $(SRCS) $(HDRS)
-	cpplint $(SRCS) $(HDRS)
+	cpplint $^
 
 clean:
 	rm -f jcc *.o *~ tmp*
