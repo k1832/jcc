@@ -7,5 +7,4 @@ See [`test.sh`](https://github.com/k1832/jcc/blob/main/test.sh).
 
 ## Reference
 - https://www.sigbus.info/compilerbook
-- https://github.com/rui314/8cc
-- https://github.com/rui314/9cc
+- https://github.com/rui314/chibicc
