@@ -1,4 +1,4 @@
-/* Copyright 2021 Morisaki, Keita. All rights reserved. */
+/* Copyright 2021 Keita Morisaki. All rights reserved. */
 #include <stdio.h>
 
 #include "./jcc.h"

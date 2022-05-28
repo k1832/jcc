@@ -1,4 +1,4 @@
-/* Copyright 2021 Morisaki, Keita. All rights reserved. */
+/* Copyright 2021 Keita Morisaki. All rights reserved. */
 
 // read this header only once
 #ifndef JCC_H_
