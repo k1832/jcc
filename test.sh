@@ -16,6 +16,13 @@ assert() {
   fi
 }
 
+# test to exit with error
+# # Deplicated param
+# assert 0 "int my_sum(int a, int a) {return a + a;} int main() {return my_sum(10, 10);}"
+# # Redeclaration variable
+# assert 0 "int my_sum(int a, int b) {int a; return a + b;} int main() {return my_sum(10, 10);}"
+# assert 0 "int my_sum(int a, int b) {int c; int c; return a + b;} int main() {return my_sum(10, 10);}"
+
 # return the inputted number
 assert 0 "int main() {0;}"
 assert 42 "int main() {42;}"

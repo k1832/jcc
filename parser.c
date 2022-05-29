@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+#include <assert.h>
 
 #include "./jcc.h"
 
@@ -114,6 +115,26 @@ static LVar *NewLVar(Node *node, Token *tok) {
   node->next_offset_in_block += 8;
   node->locals_linked_list_head = local;
   return local;
+}
+
+static void ValidateParamName(Node *node, Token *new_param) {
+  assert(new_param->kind == TK_IDENT);
+
+  LVar *param = node->params_linked_list_head;
+  while (param) {
+    if (new_param->len != param->len) {
+      param = param->next;
+      continue;
+    }
+
+    if (memcmp(new_param->str, param->name, new_param->len)) {
+      param = param->next;
+      continue;
+    }
+
+    ExitWithErrorAt(user_input, new_param->str,
+      "Deplicated param: \"%.*s\"", new_param->len, new_param->str);
+  }
 }
 
 static void NewParam(Node *node, Token *tok) {
@@ -306,6 +327,7 @@ static Node *Statement() {
     // args
     Token *ident_param = ConsumeAndGetIfIdent();
     while (ident_param) {
+      ValidateParamName(nd_func_dclr, ident_param);
       NewParam(nd_func_dclr, ident_param);
 
       if (ConsumeIfReservedTokenMatches(",")) {
