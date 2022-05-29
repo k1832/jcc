@@ -1,6 +1,7 @@
 CFLAGS=-std=c11 -g -static
 SRCS=$(wildcard *.c)
 HDRS=$(wildcard *.h)
+# https://www.gnu.org/software/make/manual/make.html#Substitution-Refs
 OBJS=$(SRCS:.c=.o)
 
 jcc: style $(OBJS)

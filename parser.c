@@ -16,6 +16,7 @@ void ExitWithErrorAt(char *input, char *loc, char *fmt, ...);
 bool StartsWith(char *p, char *suffix);
 bool IsAlnumOrUnderscore(char c);
 
+// TODO(k1832): Put tokenizer in another file.
 /*** tokenizer ***/
 Token *ConnectAndGetNewToken(
     TokenKind kind, Token *current, char *str, int len
@@ -72,6 +73,13 @@ void Tokenize() {
     if (StartsWith(char_pointer, "for") &&
       !IsAlnumOrUnderscore(char_pointer[3])) {
       cur = ConnectAndGetNewToken(TK_FOR, cur, char_pointer, 3);
+      char_pointer += 3;
+      continue;
+    }
+
+    if (StartsWith(char_pointer, "int") &&
+      !IsAlnumOrUnderscore(char_pointer[3])) {
+      cur = ConnectAndGetNewToken(TK_INT, cur, char_pointer, 3);
       char_pointer += 3;
       continue;
     }
@@ -159,6 +167,19 @@ bool ConsumeIfKindMatches(TokenKind kind) {
 
   token = token->next;
   return true;
+}
+
+Token *ExpectIdentifier() {
+  Token *tok = ConsumeAndGetIfIdent();
+  if (tok) return tok;
+
+  ExitWithErrorAt(user_input, token->str, "Expected identifier.");
+}
+
+void ExpectSpecificToken(TokenKind kind) {
+  if (ConsumeIfKindMatches(kind)) return;
+
+  ExitWithErrorAt(user_input, token->str, "Unexpected token.");
 }
 
 void Expect(char *op) {
@@ -292,6 +313,7 @@ void BuildAST() {
 }
 
 // TODO(k1832): How to write comma-separated arguments for a function in EBNF?
+// TODO(k1832): Declaration of multiple variables
 
 // Statement =
 //  "return" Expression ";" |
@@ -299,7 +321,8 @@ void BuildAST() {
 //  "while" "(" Expression ")" Statement
 //  "for" "(" Expression? ";" Expression? ";" Expression? ")" Statement |
 //  "{" Statement* "}" |
-//  identifier "(" identifier* ")" "{" Statement* "}" |
+//  "int" identifier "(" ("int" identifier)* ")" "{" Statement* "}" |
+//  "int" "*" identifier ";" |
 //  Expression ";"
 
 Node *Statement() {
@@ -359,57 +382,76 @@ Node *Statement() {
     return head;
   }
 
-  // Function declaration. Lookahead if there is a curly bracket.
-  // "token" should be restored to the current
-  // if it's not a function declaration.
-  Token *current = token;
-  Token *tok_func_name = ConsumeAndGetIfIdent();
-  if (tok_func_name) {
-    // This is not surely function declaration
-    // until you see a curly bracket.
-    Node *nd_func_dclr = NewNode(ND_FUNC_DECLARATION);
-    nd_func_dclr->func_name = tok_func_name->str;
-    nd_func_dclr->func_name_len = tok_func_name->len;
+  if (!ConsumeIfKindMatches(TK_INT)) {
+    Node *node = Expression();
+    Expect(";");
+    return node;
+  }
 
-    if (ConsumeIfReservedTokenMatches("(")) {
-      Token *ident_param = ConsumeAndGetIfIdent();
-      while (ident_param) {
-        NewParam(nd_func_dclr, ident_param);
+  // TOOD(k1832): Distinguish int, int pointer, and etc.
+  ConsumeIfReservedTokenMatches("*");
 
-        if (ConsumeIfReservedTokenMatches(",")) {
-          // TODO(k1832): Consider a behavior
-          // when there is no parameter after a comma.
-          ident_param = ConsumeAndGetIfIdent();
-        } else {
-          break;
-        }
-      }
-      Expect(")");
+  Token *token_after_variable_type = token;
 
-      if (ConsumeIfReservedTokenMatches("{")) {
-        // Function declaration.
-        nd_func_dclr_in_progress = nd_func_dclr;
+  Token *variable_or_func_name = ExpectIdentifier();
+  if (ConsumeIfReservedTokenMatches(";")) {
+    // local variable
+    Node *node = NewNode(ND_LVAR);
+    LVar *local =
+      GetDeclaredLocal(nd_func_dclr_in_progress, variable_or_func_name);
 
-        Node *node_in_block = nd_func_dclr;
-        while (!ConsumeIfReservedTokenMatches("}")) {
-          node_in_block->next_in_block = Statement();
-          node_in_block = node_in_block->next_in_block;
-        }
-        // Reset the node that's currently being processed function.
-        nd_func_dclr_in_progress = NULL;
+    if (local) {
+      ExitWithErrorAt(user_input, token_after_variable_type->str,
+        "Redeclaration of \"%.*s\"",
+        variable_or_func_name->len,
+        variable_or_func_name->str);
+    }
 
-        return nd_func_dclr;
+    local = NewLVar(nd_func_dclr_in_progress, variable_or_func_name);
+    node->offset = local->offset;
+    return node;
+  }
+
+  // Function declaration
+  // TODO(k1832): Check for multiple definition with same name
+  Node *nd_func_dclr = NewNode(ND_FUNC_DECLARATION);
+  nd_func_dclr->func_name = variable_or_func_name->str;
+  nd_func_dclr->func_name_len = variable_or_func_name->len;
+
+  Expect("(");
+  if (ConsumeIfKindMatches(TK_INT)) {
+    // args
+    Token *ident_param = ConsumeAndGetIfIdent();
+    while (ident_param) {
+      NewParam(nd_func_dclr, ident_param);
+
+      if (ConsumeIfReservedTokenMatches(",")) {
+        // TODO(k1832): Consider a behavior
+        // when there is no parameter after a comma.
+        ExpectSpecificToken(TK_INT);
+        ident_param = ConsumeAndGetIfIdent();
+      } else {
+        break;
       }
     }
   }
+  Expect(")");
 
-  token = current;
-  Node *node = Expression();
-  Expect(";");
-  return node;
+  Expect("{");
+  nd_func_dclr_in_progress = nd_func_dclr;
+
+  Node *node_in_block = nd_func_dclr;
+  while (!ConsumeIfReservedTokenMatches("}")) {
+    node_in_block->next_in_block = Statement();
+    node_in_block = node_in_block->next_in_block;
+  }
+  // Reset the node that's currently being processed function.
+  nd_func_dclr_in_progress = NULL;
+
+  return nd_func_dclr;
 }
 
-// Expression       = Assignment
+// Expression     = Assignment
 Node *Expression() {
   return Assignment();
 }
@@ -553,6 +595,7 @@ Node *Primary() {
   if (tok) {
     // identifier
     if (ConsumeIfReservedTokenMatches("(")) {
+      // Function call
       Node *nd_func_call = NewNode(ND_FUNC_CALL);
       nd_func_call->func_name = tok->str;
       nd_func_call->func_name_len = tok->len;
@@ -566,11 +609,12 @@ Node *Primary() {
       return nd_func_call;
     }
 
+    // local variable
     Node *node = NewNode(ND_LVAR);
     LVar *local = GetDeclaredLocal(nd_func_dclr_in_progress, tok);
     if (!local) {
-      // new variable
-      local = NewLVar(nd_func_dclr_in_progress, tok);
+      ExitWithErrorAt(user_input, tok->str,
+        "Undeclared variable \"%.*s\"", tok->len, tok->str);
     }
     node->offset = local->offset;
     return node;
