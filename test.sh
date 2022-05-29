@@ -107,9 +107,9 @@ assert 8 "int fib(int n) {if(n<=1) return n; else return fib(n-1) + fib(n-2);} i
 assert 13 "int fib(int n) {if(n<=1) return n; else return fib(n-1) + fib(n-2);} int main() {return fib(7);}"
 assert 120 "int combination(int n, int r) {if(n==r) return 1; if(r==0) return 1; return combination(n-1, r-1) + combination(n-1, r);} int main() {return combination(10, 3);} "
 
-assert 21 "int ten_sum(int a,int b,int c,int d,int e, int f) {return a+b+c+d+e+f;} int main() {return ten_sum(1,2,3,4,5,6);}"
-assert 15 "int ten_sum(int a,int b,int c,int d,int e,int f,int g,int h, int i) {return a+b+c+d+e+f-g-h+i;} int main() {return ten_sum(1,2,3,4,5,6,7,8,9);}"
-assert 25 "int ten_sum(int a,int b,int c,int d,int e,int f,int g,int h,int i, int j) {return a+b+c+d+e+f-g-h+i+j;} int main() {return ten_sum(1,2,3,4,5,6,7,8,9,10);}"
+assert 21 "int ten_sum(int a, int b, int c, int d, int e, int f) {return a+b+c+d+e+f;} int main() {return ten_sum(1,2,3,4,5,6);}"
+assert 15 "int ten_sum(int a, int b, int c, int d, int e, int f, int g, int h, int i) {return a+b+c+d+e+f-g-h+i;} int main() {return ten_sum(1,2,3,4,5,6,7,8,9);}"
+assert 25 "int ten_sum(int a, int b, int c, int d, int e, int f, int g, int h, int i, int j) {return a+b+c+d+e+f-g-h+i+j;} int main() {return ten_sum(1,2,3,4,5,6,7,8,9,10);}"
 
 # mod (%)
 assert 0 "int main() {10%5;}"

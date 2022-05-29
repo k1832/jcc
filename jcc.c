@@ -4,7 +4,7 @@
 
 #include "./jcc.h"
 
-void *Tokenize();
+void Tokenize();
 void BuildAST();
 void PrintAssembly(Node *node);
 
