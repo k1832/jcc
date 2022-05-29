@@ -10,7 +10,7 @@ const int label_digit = 5;
 const char registers[6][4] = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
 
 // Push the ADDRESS of node only if node is left-value.
-void PrintAssemblyForLeftVar(Node *node) {
+static void PrintAssemblyForLeftVar(Node *node) {
   printf("  # %s (%s): at line %d\n", __FILE__, __func__, __LINE__);
 
   if (node->kind != ND_LVAR) {

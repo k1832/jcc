@@ -35,8 +35,5 @@ bool StartsWith(char *p, char *possible_suffix) {
 }
 
 bool IsAlnumOrUnderscore(char c) {
-  if (isalnum(c)) return true;
-  if (c == '_') return true;
-
-  return false;
+  return isalnum(c) || c == '_';
 }

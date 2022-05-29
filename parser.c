@@ -16,17 +16,13 @@ void ExitWithErrorAt(char *input, char *loc, char *fmt, ...);
 bool StartsWith(char *p, char *suffix);
 
 /*** token processor ***/
-bool ReservedTokenMatches(char *op) {
-  if (token->kind != TK_RESERVED) {
-    return false;
-  }
-  if (token->len != strlen(op)) {
-    return false;
-  }
-  return StartsWith(token->str, op);
+static bool ReservedTokenMatches(char *op) {
+  return token->kind == TK_RESERVED &&
+    token->len == strlen(op) &&
+    StartsWith(token->str, op);
 }
 
-bool ConsumeIfReservedTokenMatches(char *op) {
+static bool ConsumeIfReservedTokenMatches(char *op) {
   if (!ReservedTokenMatches(op)) {
     return false;
   }
@@ -37,7 +33,7 @@ bool ConsumeIfReservedTokenMatches(char *op) {
 
 // Consume a token only if the token is TK_IDENT.
 // Return the consumed identifier-token, but not the next generated token.
-Token *ConsumeAndGetIfIdent() {
+static Token *ConsumeAndGetIfIdent() {
   if (token->kind != TK_IDENT) {
     return NULL;
   }
@@ -47,7 +43,7 @@ Token *ConsumeAndGetIfIdent() {
   return ident_token;
 }
 
-bool ConsumeIfKindMatches(TokenKind kind) {
+static bool ConsumeIfKindMatches(TokenKind kind) {
   if (token->kind != kind) {
     return false;
   }
@@ -56,26 +52,26 @@ bool ConsumeIfKindMatches(TokenKind kind) {
   return true;
 }
 
-Token *ExpectIdentifier() {
+static Token *ExpectIdentifier() {
   Token *tok = ConsumeAndGetIfIdent();
   if (tok) return tok;
 
   ExitWithErrorAt(user_input, token->str, "Expected identifier.");
 }
 
-void ExpectSpecificToken(TokenKind kind) {
+static void ExpectSpecificToken(TokenKind kind) {
   if (ConsumeIfKindMatches(kind)) return;
 
   ExitWithErrorAt(user_input, token->str, "Unexpected token.");
 }
 
-void Expect(char *op) {
+static void Expect(char *op) {
   if (ConsumeIfReservedTokenMatches(op)) return;
 
   ExitWithErrorAt(user_input, token->str, "Expected `%c`.", *op);
 }
 
-int ExpectNumber() {
+static int ExpectNumber() {
   if (token->kind != TK_NUM) {
     ExitWithErrorAt(user_input, token->str, "Expected a number.");
   }
@@ -85,14 +81,14 @@ int ExpectNumber() {
   return val;
 }
 
-bool AtEOF() {
+static bool AtEOF() {
   return token->kind == TK_EOF;
 }
 /*** token processor ***/
 
 
 /*** local variable ***/
-LVar *GetDeclaredLocal(Node *node, Token *tok) {
+static LVar *GetDeclaredLocal(Node *node, Token *tok) {
   for (
     LVar *local = node->locals_linked_list_head;
     local;
@@ -105,7 +101,7 @@ LVar *GetDeclaredLocal(Node *node, Token *tok) {
   return NULL;
 }
 
-LVar *NewLVar(Node *node, Token *tok) {
+static LVar *NewLVar(Node *node, Token *tok) {
   LVar *local = calloc(1, sizeof(LVar));
   local->name = tok->str;
   local->len = tok->len;
@@ -120,7 +116,7 @@ LVar *NewLVar(Node *node, Token *tok) {
   return local;
 }
 
-void NewParam(Node *node, Token *tok) {
+static void NewParam(Node *node, Token *tok) {
   // Create a new local variable and
   // link it to the linked-list of parameters.
   // This linked list is used for
@@ -149,7 +145,7 @@ void NewParam(Node *node, Token *tok) {
 
 
 /*** function call ***/
-ArgsForCall *NewArg(Node *nd_func_call, Node *new_arg) {
+static ArgsForCall *NewArg(Node *nd_func_call, Node *new_arg) {
   ArgsForCall *arg = calloc(1, sizeof(ArgsForCall));
   arg->node = new_arg;
   arg->next = nd_func_call->args_linked_list_head;
@@ -160,35 +156,35 @@ ArgsForCall *NewArg(Node *nd_func_call, Node *new_arg) {
 
 
 /*** AST parser ***/
-Node *NewNode(NodeKind kind) {
+static Node *NewNode(NodeKind kind) {
   Node *node = calloc(1, sizeof(Node));
   node->kind = kind;
   return node;
 }
 
-Node *NewBinary(NodeKind kind, Node *lhs, Node *rhs) {
+static Node *NewBinary(NodeKind kind, Node *lhs, Node *rhs) {
   Node *node = NewNode(kind);
   node->lhs = lhs;
   node->rhs = rhs;
   return node;
 }
 
-Node *NewNodeNumber(int val) {
+static Node *NewNodeNumber(int val) {
   Node *node = NewNode(ND_NUM);
   node->val = val;
   return node;
 }
 
 void BuildAST();
-Node *Statement();
-Node *Expression();
-Node *Assignment();
-Node *Equality();
-Node *Relational();
-Node *Add();
-Node *MulDiv();
-Node *Unary();
-Node *Primary();
+static Node *Statement();
+static Node *Expression();
+static Node *Assignment();
+static Node *Equality();
+static Node *Relational();
+static Node *Add();
+static Node *MulDiv();
+static Node *Unary();
+static Node *Primary();
 
 // BuildAST    = Statement*
 void BuildAST() {
@@ -212,7 +208,7 @@ void BuildAST() {
 //  "int" "*" identifier ";" |
 //  Expression ";"
 
-Node *Statement() {
+static Node *Statement() {
   if (ConsumeIfKindMatches(TK_RETURN)) {
     Node *lhs = Expression();
     Expect(";");
@@ -339,12 +335,12 @@ Node *Statement() {
 }
 
 // Expression     = Assignment
-Node *Expression() {
+static Node *Expression() {
   return Assignment();
 }
 
 // Assignment     = Equality ("=" Assignment)?
-Node *Assignment() {
+static Node *Assignment() {
   Node *node = Equality();
   if (ConsumeIfReservedTokenMatches("=")) {
     return NewBinary(ND_ASSIGN, node, Assignment());
@@ -353,7 +349,7 @@ Node *Assignment() {
 }
 
 // Equality   = Relational ("==" Relational | "!=" Relational)*
-Node *Equality() {
+static Node *Equality() {
     Node *node = Relational();
     for (;;) {
       if (ConsumeIfReservedTokenMatches("==")) {
@@ -371,7 +367,7 @@ Node *Equality() {
 }
 
 // Relational = Add ("<" Add | "<=" Add | ">" Add | ">=" Add)*
-Node *Relational() {
+static Node *Relational() {
   Node *node = Add();
   for (;;) {
     if (ConsumeIfReservedTokenMatches("<")) {
@@ -401,7 +397,7 @@ Node *Relational() {
 }
 
 // Add    = MulDiv ("+" MulDiv | "-" MulDiv)*
-Node *Add() {
+static Node *Add() {
   Node *node = MulDiv();
   for (;;) {
     if (ConsumeIfReservedTokenMatches("+")) {
@@ -419,7 +415,7 @@ Node *Add() {
 }
 
 // MulDiv     = Unary ("*" Unary | "/" Unary | "%" Unary)*
-Node *MulDiv() {
+static Node *MulDiv() {
   Node *node = Unary();
   for (;;) {
     if (ConsumeIfReservedTokenMatches("*")) {
@@ -445,7 +441,7 @@ Node *MulDiv() {
 //  ("+" | "-")? Primary |
 //  "*" Unary |
 //  "&" Unary
-Node *Unary() {
+static Node *Unary() {
   if (ConsumeIfReservedTokenMatches("*")) {
     return NewBinary(ND_DEREF, Unary(), NULL);
   }
@@ -471,7 +467,7 @@ Node *Unary() {
 //  "(" Expression ")" |
 //  identifier ( "(" Expression* ")" )? |
 //  number
-Node *Primary() {
+static Node *Primary() {
   if (ConsumeIfReservedTokenMatches("(")) {
     Node *node = Expression();
     Expect(")");

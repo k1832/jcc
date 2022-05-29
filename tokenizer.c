@@ -15,7 +15,7 @@ bool StartsWith(char *p, char *suffix);
 bool IsAlnumOrUnderscore(char c);
 
 /*** tokenizer ***/
-Token *ConnectAndGetNewToken(
+static Token *ConnectAndGetNewToken(
     TokenKind kind, Token *current, char *str, int len
   ) {
   Token *new_token = calloc(1, sizeof(Token));
@@ -29,9 +29,9 @@ Token *ConnectAndGetNewToken(
 
 void Tokenize() {
   char *char_pointer = user_input;
-  Token head;
-  head.next = NULL;
-  Token *cur = &head;
+  Token *head;
+  head->next = NULL;
+  Token *cur = head;
 
   while (*char_pointer) {
     if (isspace(*char_pointer)) {
@@ -120,6 +120,6 @@ void Tokenize() {
   }
 
   ConnectAndGetNewToken(TK_EOF, cur, char_pointer, 1);
-  token = head.next;
+  token = head->next;
 }
 /*** tokenizer ***/
