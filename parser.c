@@ -53,6 +53,12 @@ static bool ConsumeIfKindMatches(TokenKind kind) {
   return true;
 }
 
+static void ValidateToken(TokenKind kind) {
+  if (token->kind == kind) return;
+
+  ExitWithErrorAt(user_input, token->str, "Unexpected token.");
+}
+
 static Token *ExpectIdentifier() {
   Token *tok = ConsumeAndGetIfIdent();
   if (tok) return tok;
@@ -117,6 +123,7 @@ static LVar *NewLVar(Node *node, Token *tok) {
   return local;
 }
 
+// Make sure one parameter name is used only once at most.
 static void ValidateParamName(Node *node, Token *new_param) {
   assert(new_param->kind == TK_IDENT);
 
@@ -133,7 +140,8 @@ static void ValidateParamName(Node *node, Token *new_param) {
     }
 
     ExitWithErrorAt(user_input, new_param->str,
-      "Deplicated param: \"%.*s\"", new_param->len, new_param->str);
+      "This parameter name is used more than once: \"%.*s\"",
+      new_param->len, new_param->str);
   }
 }
 
@@ -323,22 +331,14 @@ static Node *Statement() {
   nd_func_dclr->func_name_len = variable_or_func_name->len;
 
   Expect("(");
-  if (ConsumeIfKindMatches(TK_INT)) {
-    // args
-    Token *ident_param = ConsumeAndGetIfIdent();
-    while (ident_param) {
-      ValidateParamName(nd_func_dclr, ident_param);
-      NewParam(nd_func_dclr, ident_param);
-
-      if (ConsumeIfReservedTokenMatches(",")) {
-        // TODO(k1832): Consider a behavior
-        // when there is no parameter after a comma.
-        ExpectSpecificToken(TK_INT);
-        ident_param = ConsumeAndGetIfIdent();
-      } else {
-        break;
-      }
+  while (ConsumeIfKindMatches(TK_INT)) {
+    Token *ident_param = ExpectIdentifier();
+    ValidateParamName(nd_func_dclr, ident_param);
+    NewParam(nd_func_dclr, ident_param);
+    if (!ConsumeIfReservedTokenMatches(",")) {
+      break;
     }
+    ValidateToken(TK_INT);
   }
   Expect(")");
 
