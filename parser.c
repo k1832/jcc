@@ -226,7 +226,7 @@ void BuildAST() {
 //  "for" "(" Expression? ";" Expression? ";" Expression? ")" Statement |
 //  "{" Statement* "}" |
 //  "int" identifier "(" ("int" identifier)* ")" "{" Statement* "}" |
-//  "int" "*" identifier ";" |
+//  "int" "*"? identifier ";" |
 //  Expression ";"
 
 static Node *Statement() {
