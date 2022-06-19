@@ -231,9 +231,9 @@ void BuildAST() {
 //  "while" "(" Expression ")" StatementOrExpr
 //  "for" "(" Expression? ";" Expression? ";" Expression? ")" StatementOrExpr |
 //  "{" StatementOrExpr* "}" |
+//  Expression ";"
 //  "int" identifier "(" ("int" identifier)* ")" "{" StatementOrExpr* "}" |
 //  "int" "*"? identifier ";" |
-//  Expression ";"
 
 static Node *StatementOrExpr() {
   if (ConsumeIfKindMatches(TK_RETURN)) {
@@ -282,6 +282,8 @@ static Node *StatementOrExpr() {
     return for_node;
   }
 
+
+  //  "{" StatementOrExpr* "}"
   if (ConsumeIfReservedTokenMatches("{")) {
     Node *nd_block =  NewNode(ND_BLOCK);
     Node *head = nd_block;
@@ -292,12 +294,14 @@ static Node *StatementOrExpr() {
     return head;
   }
 
+  //  Expression ";"
   if (!ConsumeIfKindMatches(TK_INT)) {
     Node *node = Expression();
     Expect(";");
     return node;
   }
 
+  //  "int" "*"? identifier ";"
   // TOOD(k1832): Distinguish int, int pointer, and etc.
   ConsumeIfReservedTokenMatches("*");
 
@@ -322,6 +326,7 @@ static Node *StatementOrExpr() {
     return node;
   }
 
+  //  "int" identifier "(" ("int" identifier)* ")" "{" StatementOrExpr* "}"
   // Function declaration
   // TODO(k1832): Check for multiple definition with same name
   Node *nd_func_dclr = NewNode(ND_FUNC_DECLARATION);
