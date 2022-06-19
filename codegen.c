@@ -231,6 +231,18 @@ void PrintAssembly(Node *node) {
     return;
   }
 
+  if (node->kind == ND_PRE_INCREMENT) {
+    // (lhs = lhs + 1)
+    printf("  # %s (%s): at line %d\n", __FILE__, __func__, __LINE__);
+    PrintAssemblyForLeftVar(node->lhs);
+    printf("  pop rax\n");
+    printf("  mov rdi, [rax]\n");
+    printf("  add rdi, 1\n");
+    printf("  mov [rax], rdi\n");
+    printf("  push rdi\n");
+    return;
+  }
+
   PrintAssembly(node->lhs);
   PrintAssembly(node->rhs);
 

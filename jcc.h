@@ -68,6 +68,7 @@ typedef enum {
   ND_FUNC_DECLARATION,
   ND_ADDR,
   ND_DEREF,
+  ND_PRE_INCREMENT,
 } NodeKind;
 
 struct Node {

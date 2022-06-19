@@ -129,4 +129,9 @@ assert 10 "int main() {int x; int *y; x=10; y=&x; return *y;}"
 assert 3 "int main() {int x; int y; int *z; x=3; y=5; z=&y+8; return *z;}"
 assert 10 "int main() {int x; int y; int *z; x=10; y=5; z=&y+8; return *z;}"
 
+# Pre increment
+assert 11 "int main() {int a; a=10; ++a; return a;}"
+assert 11 "int main() {int a; int b; a=10; b=++a; return b;}"
+assert 20 "int main() {int ret; int i; ret = 0; for (i=0; i<10; ++i) {ret=ret+2;} return ret;}"
+
 echo OK

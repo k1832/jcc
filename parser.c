@@ -76,8 +76,12 @@ static void Expect(char *op) {
   ExitWithErrorAt(user_input, token->str, "Expected `%c`.", *op);
 }
 
+static bool IsNextTokenNumber() {
+  return token->kind == TK_NUM;
+}
+
 static int ExpectNumber() {
-  if (token->kind != TK_NUM) {
+  if (!IsNextTokenNumber()) {
     ExitWithErrorAt(user_input, token->str, "Expected a number.");
   }
 
@@ -211,6 +215,7 @@ static Node *Relational();
 static Node *Add();
 static Node *MulDiv();
 static Node *Unary();
+static Node *UnaryLvalue();
 static Node *Primary();
 
 // BuildAST    = StatementOrExpr*
@@ -465,17 +470,21 @@ static Node *MulDiv() {
 }
 
 // Unary   =
-//  ("+" | "-")? Primary |
-//  "*" Unary |
-//  "&" Unary
+//  "++"? UnaryLvalue |
+//  ("+" | "-")? Primary
 static Node *Unary() {
-  if (ConsumeIfReservedTokenMatches("*")) {
-    return NewBinary(ND_DEREF, Unary(), NULL);
+  if (ConsumeIfReservedTokenMatches("++")) {
+    return NewBinary(ND_PRE_INCREMENT, UnaryLvalue(), NULL);
   }
 
-  if (ConsumeIfReservedTokenMatches("&")) {
-    return NewBinary(ND_ADDR, Unary(), NULL);
+  if (ReservedTokenMatches("*")) {
+    return UnaryLvalue();
   }
+
+  if (ReservedTokenMatches("&")) {
+    return UnaryLvalue();
+  }
+
 
   if (ConsumeIfReservedTokenMatches("+")) {
     return Primary();
@@ -488,12 +497,35 @@ static Node *Unary() {
   return Primary();
 }
 
+// UnaryLvalue =
+//  ("*" | "&")* identifier
+static Node *UnaryLvalue() {
+  if (ConsumeIfReservedTokenMatches("*")) {
+    return NewBinary(ND_DEREF, UnaryLvalue(), NULL);
+  }
+
+  if (ConsumeIfReservedTokenMatches("&")) {
+    return NewBinary(ND_ADDR, UnaryLvalue(), NULL);
+  }
+
+  Token *ident = ExpectIdentifier();
+  Node *node = NewNode(ND_LVAR);
+  LVar *local = GetDeclaredLocal(nd_func_dclr_in_progress, ident);
+  if (!local) {
+    ExitWithErrorAt(user_input, ident->str,
+      "Undeclared variable \"%.*s\"", ident->len, ident->str);
+  }
+  node->offset = local->offset;
+  return node;
+}
+
 // TODO(k1832): How to write comma-separated arguments for a function in EBNF?
 
 // Primary =
 //  "(" Expression ")" |
-//  identifier ( "(" Expression* ")" )? |
-//  number
+//  identifier "(" Expression* ")" ) |
+//  number |
+//  UnaryLvalue
 static Node *Primary() {
   if (ConsumeIfReservedTokenMatches("(")) {
     Node *node = Expression();
@@ -501,6 +533,7 @@ static Node *Primary() {
     return node;
   }
 
+  Token *stashed_token = token;
   Token *tok = ConsumeAndGetIfIdent();
   if (tok) {
     // identifier
@@ -518,18 +551,23 @@ static Node *Primary() {
       }
       return nd_func_call;
     }
+    token = stashed_token;
 
-    // local variable
-    Node *node = NewNode(ND_LVAR);
-    LVar *local = GetDeclaredLocal(nd_func_dclr_in_progress, tok);
-    if (!local) {
-      ExitWithErrorAt(user_input, tok->str,
-        "Undeclared variable \"%.*s\"", tok->len, tok->str);
-    }
-    node->offset = local->offset;
-    return node;
+
+    // // local variable
+    // Node *node = NewNode(ND_LVAR);
+    // LVar *local = GetDeclaredLocal(nd_func_dclr_in_progress, tok);
+    // if (!local) {
+    //   ExitWithErrorAt(user_input, tok->str,
+    //     "Undeclared variable \"%.*s\"", tok->len, tok->str);
+    // }
+    // node->offset = local->offset;
+    // return node;
+  }
+  if (IsNextTokenNumber()) {
+    return NewNodeNumber(ExpectNumber());
   }
 
-  return NewNodeNumber(ExpectNumber());
+  return UnaryLvalue();
 }
 /*** AST parser ***/
