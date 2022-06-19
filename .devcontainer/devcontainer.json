@@ -5,6 +5,7 @@
     },
     "extensions": [
         "ms-vscode.cpptools-extension-pack",
-        "ms-vsliveshare.vsliveshare"
+        "donjayamanne.githistory",
+        "eamodio.gitlens"
     ]
 }
