@@ -21,9 +21,9 @@ int main(int argc, char **argv) {
   printf(".intel_syntax noprefix\n");
   printf(".globl main\n");
 
-  for (int i = 0; statements[i]; ++i) {
-    printf("  # statements[%d] starts.\n", i);
-    PrintAssembly(statements[i]);
+  for (int i = 0; programs[i]; ++i) {
+    printf("  # programs[%d] starts.\n", i);
+    PrintAssembly(programs[i]);
     printf("  pop rax\n");
   }
 

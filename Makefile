@@ -4,7 +4,8 @@ HDRS=$(wildcard *.h)
 # https://www.gnu.org/software/make/manual/make.html#Substitution-Refs
 OBJS=$(SRCS:.c=.o)
 
-jcc: style $(OBJS)
+jcc: $(OBJS)
+	$(MAKE) style
 	$(CC) -o $@ $(OBJS) $(LDFLAGS)
 
 $(OBJS): $(HDRS)

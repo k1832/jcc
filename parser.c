@@ -8,9 +8,7 @@
 
 #include "./jcc.h"
 
-Token *token;       // token currently processed
-char *user_input;   // whole program
-Node *statements[100];
+Node *programs[100];
 Node *nd_func_dclr_in_progress;
 
 void ExitWithErrorAt(char *input, char *loc, char *fmt, ...);
@@ -219,9 +217,9 @@ static Node *Primary();
 void BuildAST() {
   int i = 0;
   while (!AtEOF()) {
-    statements[i++] = Statement();
+    programs[i++] = Statement();
   }
-  statements[i] = NULL;
+  programs[i] = NULL;
 }
 
 // TODO(k1832): How to write comma-separated arguments for a function in EBNF?
