@@ -93,6 +93,7 @@ assert 11 "int main() {int a; a=0; while(a<=10) a=a+1; return a;}"
 assert 128 "int main() {int i; int a; a=1; for(i=0; i<7; i=i+1) a=a*2; return a;}"  # 2^7
 assert 5 "int main() {int i; int a; a=0; for(i=0; i<10; i=i+2) a=a+1; return a;}"
 assert 1 "int main() {int i; int a; a=1; for(i=0; i<0; i=i+1) a=a+1; return a;}"
+assert 10 "int main() {for(;;) return 10; return 100;}"
 
 # block
 assert 10 "int main() {int ret; int a; ret=0; a=10; while(a) {ret=ret+1; a=a-1;} return ret;}"

@@ -24,6 +24,11 @@ static void PrintAssemblyForLeftVar(Node *node) {
 
 // Push processed result (VALUE) of node.
 void PrintAssembly(Node *node) {
+  if (node == NULL) {
+    ExitWithError("Can not print assembly for NULL.\n");
+  }
+
+  // TODO(k1832): Use Switch-case
   if (node->kind == ND_NUM) {
     printf("  # %s (%s): at line %d\n", __FILE__, __func__, __LINE__);
     printf("  push %d\n", node->val);
@@ -105,7 +110,9 @@ void PrintAssembly(Node *node) {
     printf("  # %s (%s): at line %d\n", __FILE__, __func__, __LINE__);
     int label_for_for_start = label_num++;
     int label_for_for_end = label_num++;
-    PrintAssembly(node->initialization);
+    if (node->initialization) {
+      PrintAssembly(node->initialization);
+    }
     printf(".L%0*d:\n", label_digit, label_for_for_start);
     if (node->condition == NULL) {
       printf("  push 1\n");  // HACK: condition is always true.
@@ -118,7 +125,9 @@ void PrintAssembly(Node *node) {
     printf("  je .L%0*d\n", label_digit, label_for_for_end);
 
     PrintAssembly(node->body_statement);
-    PrintAssembly(node->iteration);
+    if (node->iteration) {
+      PrintAssembly(node->iteration);
+    }
     printf("  jmp .L%0*d\n", label_digit, label_for_for_start);
 
     printf(".L%0*d:\n", label_digit, label_for_for_end);

@@ -275,7 +275,9 @@ static Node *StatementOrExpr() {
       for_node->condition = Expression();
       Expect(";");
     }
-    for_node->iteration = Expression();
+    if (!ReservedTokenMatches(")")) {
+      for_node->iteration = Expression();
+    }
     Expect(")");
 
     for_node->body_statement = StatementOrExpr();
