@@ -203,7 +203,7 @@ static Node *NewNodeNumber(int val) {
 }
 
 void BuildAST();
-static Node *Statement();
+static Node *StatementOrExpr();
 static Node *Expression();
 static Node *Assignment();
 static Node *Equality();
@@ -213,11 +213,11 @@ static Node *MulDiv();
 static Node *Unary();
 static Node *Primary();
 
-// BuildAST    = Statement*
+// BuildAST    = StatementOrExpr*
 void BuildAST() {
   int i = 0;
   while (!AtEOF()) {
-    programs[i++] = Statement();
+    programs[i++] = StatementOrExpr();
   }
   programs[i] = NULL;
 }
@@ -225,17 +225,17 @@ void BuildAST() {
 // TODO(k1832): How to write comma-separated arguments for a function in EBNF?
 // TODO(k1832): Declaration of multiple variables
 
-// Statement =
+// StatementOrExpr =
 //  "return" Expression ";" |
-//  "if" "(" Expression ")" Statement ("else" Statement)? |
-//  "while" "(" Expression ")" Statement
-//  "for" "(" Expression? ";" Expression? ";" Expression? ")" Statement |
-//  "{" Statement* "}" |
-//  "int" identifier "(" ("int" identifier)* ")" "{" Statement* "}" |
+//  "if" "(" Expression ")" StatementOrExpr ("else" StatementOrExpr)? |
+//  "while" "(" Expression ")" StatementOrExpr
+//  "for" "(" Expression? ";" Expression? ";" Expression? ")" StatementOrExpr |
+//  "{" StatementOrExpr* "}" |
+//  "int" identifier "(" ("int" identifier)* ")" "{" StatementOrExpr* "}" |
 //  "int" "*"? identifier ";" |
 //  Expression ";"
 
-static Node *Statement() {
+static Node *StatementOrExpr() {
   if (ConsumeIfKindMatches(TK_RETURN)) {
     Node *lhs = Expression();
     Expect(";");
@@ -247,10 +247,10 @@ static Node *Statement() {
     Expect("(");
     if_node->condition = Expression();
     Expect(")");
-    if_node->body_statement = Statement();
+    if_node->body_statement = StatementOrExpr();
 
     if (ConsumeIfKindMatches(TK_ELSE)) {
-      if_node->else_statement = Statement();
+      if_node->else_statement = StatementOrExpr();
     }
 
     return if_node;
@@ -260,7 +260,7 @@ static Node *Statement() {
     Expect("(");
     Node *lhs = Expression();
     Expect(")");
-    return NewBinary(ND_WHILE, lhs, Statement());
+    return NewBinary(ND_WHILE, lhs, StatementOrExpr());
   }
 
   if (ConsumeIfKindMatches(TK_FOR)) {
@@ -278,7 +278,7 @@ static Node *Statement() {
     for_node->iteration = Expression();
     Expect(")");
 
-    for_node->body_statement = Statement();
+    for_node->body_statement = StatementOrExpr();
     return for_node;
   }
 
@@ -286,7 +286,7 @@ static Node *Statement() {
     Node *nd_block =  NewNode(ND_BLOCK);
     Node *head = nd_block;
     while (!ConsumeIfReservedTokenMatches("}")) {
-      nd_block->next_in_block = Statement();
+      nd_block->next_in_block = StatementOrExpr();
       nd_block = nd_block->next_in_block;
     }
     return head;
@@ -345,7 +345,7 @@ static Node *Statement() {
 
   Node *node_in_block = nd_func_dclr;
   while (!ConsumeIfReservedTokenMatches("}")) {
-    node_in_block->next_in_block = Statement();
+    node_in_block->next_in_block = StatementOrExpr();
     node_in_block = node_in_block->next_in_block;
   }
   // Reset the node that's currently being processed function.

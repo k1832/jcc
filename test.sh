@@ -24,6 +24,8 @@ assert() {
 # assert 0 "int my_sum(int a, int b) {int c; int c; return a + b;} int main() {return my_sum(10, 10);}"
 # # No parameter after ","
 # assert 5 "int my_sum(int a, int b, ) {return a+b;} int main() {return my_sum(2, 3);}"
+# # Left-hand side is not variable
+# assert 5 "int my_sum(int a, int b) {5=a; return a + b;} int main() {return my_sum(2, 3);}"
 
 # return the inputted number
 assert 0 "int main() {0;}"
