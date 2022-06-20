@@ -470,11 +470,15 @@ static Node *MulDiv() {
 }
 
 // Unary   =
-//  "++"? UnaryLvalue |
+//  ("++" | "--")? UnaryLvalue |
 //  ("+" | "-")? Primary
 static Node *Unary() {
   if (ConsumeIfReservedTokenMatches("++")) {
     return NewBinary(ND_PRE_INCREMENT, UnaryLvalue(), NULL);
+  }
+
+  if (ConsumeIfReservedTokenMatches("--")) {
+    return NewBinary(ND_PRE_DECREMENT, UnaryLvalue(), NULL);
   }
 
   if (ReservedTokenMatches("*")) {
