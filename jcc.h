@@ -1,4 +1,5 @@
 /* Copyright 2021 Keita Morisaki. All rights reserved. */
+#include <stdbool.h>
 
 // read this header only once
 #ifndef JCC_H_
@@ -95,6 +96,9 @@ struct Node {
   int num_parameters;                   // for ND_FUNC_DECLARATION
   int val;
   int offset;
+
+  bool post_increment;
+  bool post_decrement;
 };
 /*** AST definition ***/
 

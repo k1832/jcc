@@ -129,6 +129,7 @@ assert 10 "int main() {int x; int *y; x=10; y=&x; return *y;}"
 assert 3 "int main() {int x; int y; int *z; x=3; y=5; z=&y+8; return *z;}"
 assert 10 "int main() {int x; int y; int *z; x=10; y=5; z=&y+8; return *z;}"
 
+# TODO(k1832): Add tests with (* or &) and ("++" or "--")
 # Pre increment
 assert 11 "int main() {int a; a=10; ++a; return a;}"
 assert 11 "int main() {int a; int b; a=10; b=++a; return b;}"
@@ -138,5 +139,11 @@ assert 20 "int main() {int ret; int i; ret = 0; for (i=0; i<10; ++i) {ret=ret+2;
 assert 9 "int main() {int a; a=10; --a; return a;}"
 assert 9 "int main() {int a; int b; a=10; b=--a; return b;}"
 assert 20 "int main() {int ret; int i; ret = 0; for (i=9; i>=0; --i) {ret=ret+2;} return ret;}"
+
+# Post increment, post decrement
+assert 11 "int main() {int a; a=10; a++; return a;}"
+assert 9 "int main() {int a; a=10; a--; return a;}"
+assert 110 "int main() {int a; int b; a=10; b=a++; return a*b;}"
+assert 90 "int main() {int a; int b; a=10; b=a--; return a*b;}"
 
 echo OK

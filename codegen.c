@@ -39,8 +39,24 @@ void PrintAssembly(Node *node) {
     printf("  # %s (%s): at line %d\n", __FILE__, __func__, __LINE__);
     PrintAssemblyForLeftVar(node);
     printf("  pop rax\n");
-    printf("  mov rax, [rax]\n");
-    printf("  push rax\n");
+    printf("  mov rdi, [rax]\n");
+    printf("  push rdi\n");
+
+    if (!node->post_increment && !node->post_decrement) {
+      return;
+    }
+
+    // Increment or decrement after original value is pushed to stack
+    if (node->post_increment && node->post_decrement) {
+      ExitWithError(
+        "Both post increment & decrement cannot happen at the same time.");
+    }
+    if (node->post_increment) {
+      printf("  add rdi, 1\n");
+    } else if (node->post_decrement) {
+      printf("  sub rdi, 1\n");
+    }
+    printf("  mov [rax], rdi\n");
     return;
   }
 

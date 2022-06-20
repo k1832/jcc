@@ -215,10 +215,10 @@ static Node *Relational();
 static Node *Add();
 static Node *MulDiv();
 static Node *Unary();
-static Node *UnaryLvalue();
+static Node *RefDefLvar();
 static Node *Primary();
 
-// BuildAST    = StatementOrExpr*
+// Store StatementOrExpr into programs
 void BuildAST() {
   int i = 0;
   while (!AtEOF()) {
@@ -470,46 +470,86 @@ static Node *MulDiv() {
 }
 
 // Unary   =
-//  ("++" | "--")? UnaryLvalue |
-//  ("+" | "-")? Primary
+//  ("+" | "-") Primary
+//  ("+" | "-") RefDefLvar ("++" | "--")?
+//  ("++" | "--") RefDefLvar
+//  Primary |
+//  RefDefLvar ("++" | "--")?
 static Node *Unary() {
-  if (ConsumeIfReservedTokenMatches("++")) {
-    return NewBinary(ND_PRE_INCREMENT, UnaryLvalue(), NULL);
-  }
-
-  if (ConsumeIfReservedTokenMatches("--")) {
-    return NewBinary(ND_PRE_DECREMENT, UnaryLvalue(), NULL);
-  }
-
-  if (ReservedTokenMatches("*")) {
-    return UnaryLvalue();
-  }
-
-  if (ReservedTokenMatches("&")) {
-    return UnaryLvalue();
-  }
-
-
   if (ConsumeIfReservedTokenMatches("+")) {
-    return Primary();
+    // Just remove "+"
+
+    Node *primary = Primary();
+    if (primary) {
+      return primary;
+    }
+
+    Node *node = RefDefLvar();
+    if (ConsumeIfReservedTokenMatches("++")) {
+      node->post_increment = true;
+      return node;
+    }
+    if (ConsumeIfReservedTokenMatches("--")) {
+      node->post_decrement = true;
+      return node;
+    }
+
+    return node;
   }
 
   if (ConsumeIfReservedTokenMatches("-")) {
-    return NewBinary(ND_SUB, NewNodeNumber(0), Primary());
+    // Replace with "0 - Node"
+
+    Node *primary = Primary();
+    if (primary) {
+      return NewBinary(ND_SUB, NewNodeNumber(0), primary);
+    }
+
+    Node *rhs = RefDefLvar();
+    if (ConsumeIfReservedTokenMatches("++")) {
+      rhs->post_increment = true;
+    }
+    if (ConsumeIfReservedTokenMatches("--")) {
+      rhs->post_decrement = true;
+    }
+    Node *node = NewBinary(ND_SUB, NewNodeNumber(0), rhs);
+
+    return node;
   }
 
-  return Primary();
+  if (ConsumeIfReservedTokenMatches("++")) {
+    return NewBinary(ND_PRE_INCREMENT, RefDefLvar(), NULL);
+  }
+
+  if (ConsumeIfReservedTokenMatches("--")) {
+    return NewBinary(ND_PRE_DECREMENT, RefDefLvar(), NULL);
+  }
+
+  Node *node = Primary();
+  if (node) return node;
+
+  node = RefDefLvar();
+  if (ConsumeIfReservedTokenMatches("++")) {
+    node->post_increment = true;
+  }
+  if (ConsumeIfReservedTokenMatches("--")) {
+    node->post_decrement = true;
+  }
+  return node;
 }
 
-// UnaryLvalue =
-//  ("*" | "&")* identifier
-static Node *UnaryLvalue() {
+// Post increment and decrement could happen with these ND_KIND
+
+// RefDefLvar =
+//  ("*" | "&")? RefDefLvar |
+//  identifier
+static Node *RefDefLvar() {
   if (ConsumeIfReservedTokenMatches("*")) {
-    return NewBinary(ND_DEREF, UnaryLvalue(), NULL);
+    return NewBinary(ND_DEREF, RefDefLvar(), NULL);
   }
 
   if (ConsumeIfReservedTokenMatches("&")) {
-    return NewBinary(ND_ADDR, UnaryLvalue(), NULL);
+    return NewBinary(ND_ADDR, RefDefLvar(), NULL);
   }
 
   Token *ident = ExpectIdentifier();
@@ -528,8 +568,7 @@ static Node *UnaryLvalue() {
 // Primary =
 //  "(" Expression ")" |
 //  identifier "(" Expression* ")" ) |
-//  number |
-//  UnaryLvalue
+//  number
 static Node *Primary() {
   if (ConsumeIfReservedTokenMatches("(")) {
     Node *node = Expression();
@@ -556,22 +595,13 @@ static Node *Primary() {
       return nd_func_call;
     }
     token = stashed_token;
-
-
-    // // local variable
-    // Node *node = NewNode(ND_LVAR);
-    // LVar *local = GetDeclaredLocal(nd_func_dclr_in_progress, tok);
-    // if (!local) {
-    //   ExitWithErrorAt(user_input, tok->str,
-    //     "Undeclared variable \"%.*s\"", tok->len, tok->str);
-    // }
-    // node->offset = local->offset;
-    // return node;
   }
   if (IsNextTokenNumber()) {
     return NewNodeNumber(ExpectNumber());
   }
 
-  return UnaryLvalue();
+  // "token" should be restored such that
+  // "token" is same as the token before this function is called.
+  return NULL;
 }
 /*** AST parser ***/
