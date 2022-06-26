@@ -30,8 +30,10 @@ static bool ConsumeIfReservedTokenMatches(char *op) {
   return true;
 }
 
-// Consume a token only if the token is TK_IDENT.
-// Return the consumed identifier-token, but not the next generated token.
+/*
+ * Consume a token only if the token is TK_IDENT.
+ * Return the consumed identifier-token, but not the next generated token.
+ */
 static Token *ConsumeAndGetIfIdent() {
   if (token->kind != TK_IDENT) {
     return NULL;
@@ -147,21 +149,25 @@ static void ValidateParamName(Node *node, Token *new_param) {
   }
 }
 
+/*
+ * Create a new local variable and
+ * link it to the linked-list of parameters.
+ * This linked list is used for
+ * transfering values into stack frame.
+ */
 static void NewParam(Node *node, Token *tok) {
-  // Create a new local variable and
-  // link it to the linked-list of parameters.
-  // This linked list is used for
-  // transfering values into stack frame.
   ++(node->argc);
   ++(node->num_parameters);
   LVar *local = NewLVar(node, tok);
 
   if (node->argc > 6) {
-    // According to the ABI,
-    // arguments after the first 6 arguments
-    // should be pushed to stack reversely
-    // before calling a function.
-    // So offsets for them become negative values.
+    /*
+     * According to the ABI,
+     * arguments after the first 6 arguments
+     * should be pushed to stack reversely
+     * before calling a function.
+     * So offsets for them become negative values.
+     */
     local->offset = -(8 * (node->argc - 7) + 16);
     node->next_offset_in_block -= 8;
   }
@@ -227,19 +233,23 @@ void BuildAST() {
   programs[i] = NULL;
 }
 
-// TODO(k1832): How to write comma-separated arguments for a function in EBNF?
-// TODO(k1832): Declaration of multiple variables
-
-// StatementOrExpr =
-//  "return" Expression ";" |
-//  "if" "(" Expression ")" StatementOrExpr ("else" StatementOrExpr)? |
-//  "while" "(" Expression ")" StatementOrExpr
-//  "for" "(" Expression? ";" Expression? ";" Expression? ")" StatementOrExpr |
-//  "{" StatementOrExpr* "}" |
-//  Expression ";"
-//  "int" identifier "(" ("int" identifier)* ")" "{" StatementOrExpr* "}" |
-//  "int" "*"? identifier ";" |
-
+/*
+ * TODO(k1832): Declaration of multiple variables
+ *
+ * StatementOrExpr =
+ *  "return" Expression ";" |
+ *  "if" "(" Expression ")" StatementOrExpr ("else" StatementOrExpr)? |
+ *  "while" "(" Expression ")" StatementOrExpr
+ *  "for" "(" Expression? ";" Expression? ";" Expression? ")" StatementOrExpr |
+ *  "{" StatementOrExpr* "}" |
+ *  Expression ";"
+ *
+ *  "int" identifier "(" ( "int" identifier ("," "int" identifier) )? ")" "{"
+ *    StatementOrExpr*
+ *   "}" |
+ *
+ *  "int" "*"? identifier ";"
+ */
 static Node *StatementOrExpr() {
   if (ConsumeIfKindMatches(TK_RETURN)) {
     Node *lhs = Expression();
@@ -308,8 +318,10 @@ static Node *StatementOrExpr() {
     return node;
   }
 
-  //  "int" "*"? identifier ";"
-  // TOOD(k1832): Distinguish int, int pointer, and etc.
+  /*
+   * "int" "*"? identifier ";"
+   * TOOD(k1832): Distinguish int, int pointer, and etc.
+   */
   ConsumeIfReservedTokenMatches("*");
 
   Token *token_after_variable_type = token;
@@ -333,9 +345,14 @@ static Node *StatementOrExpr() {
     return node;
   }
 
-  //  "int" identifier "(" ("int" identifier)* ")" "{" StatementOrExpr* "}"
-  // Function declaration
-  // TODO(k1832): Check for multiple definition with same name
+  /*
+   * "int" identifier "(" ( "int" identifier ("," "int" identifier) )? ")" "{"
+   *   StatementOrExpr*
+   * "}"
+   *
+   * Function declaration
+   * TODO(k1832): Check for multiple definition with same name
+   */
   Node *nd_func_dclr = NewNode(ND_FUNC_DECLARATION);
   nd_func_dclr->func_name = variable_or_func_name->str;
   nd_func_dclr->func_name_len = variable_or_func_name->len;
@@ -469,12 +486,12 @@ static Node *MulDiv() {
   }
 }
 
-// Unary   =
-//  ("+" | "-") Primary
-//  ("+" | "-") RefDefLvar ("++" | "--")?
-//  ("++" | "--") RefDefLvar
-//  Primary |
-//  RefDefLvar ("++" | "--")?
+/*
+ * Unary   =
+ *  ("+" | "-")? Primary |
+ *  ("+" | "-")? RefDefLvar ("++" | "--")? |
+ *  ("++" | "--")? RefDefLvar
+ */
 static Node *Unary() {
   if (ConsumeIfReservedTokenMatches("+")) {
     // Just remove "+"
@@ -538,11 +555,11 @@ static Node *Unary() {
   return node;
 }
 
-// Post increment and decrement could happen with these ND_KIND
-
-// RefDefLvar =
-//  ("*" | "&")? RefDefLvar |
-//  identifier
+/*
+ * RefDefLvar =
+ *  ("*" | "&")? RefDefLvar |
+ *  identifier
+ */
 static Node *RefDefLvar() {
   if (ConsumeIfReservedTokenMatches("*")) {
     return NewBinary(ND_DEREF, RefDefLvar(), NULL);
@@ -563,12 +580,14 @@ static Node *RefDefLvar() {
   return node;
 }
 
-// TODO(k1832): How to write comma-separated arguments for a function in EBNF?
-
-// Primary =
-//  "(" Expression ")" |
-//  identifier "(" Expression* ")" ) |
-//  number
+/*
+ * TODO(k1832): How to write comma-separated arguments for a function in EBNF?
+ *
+ * Primary =
+ *  "(" Expression ")" |
+ *  identifier "(" ( Expression ("," Expression)* )? ")" ) |
+ *  number
+ */
 static Node *Primary() {
   if (ConsumeIfReservedTokenMatches("(")) {
     Node *node = Expression();
@@ -589,8 +608,10 @@ static Node *Primary() {
         ++(nd_func_call->argc);
         NewArg(nd_func_call, Expression());
         ConsumeIfReservedTokenMatches(",");
-        // TODO(k1832): Consider a behavior
-        // when there is no argument after a comma.
+        /*
+         * TODO(k1832): Consider a behavior
+         * when there is no argument after a comma.
+         */
       }
       return nd_func_call;
     }
@@ -600,8 +621,10 @@ static Node *Primary() {
     return NewNodeNumber(ExpectNumber());
   }
 
-  // "token" should be restored such that
-  // "token" is same as the token before this function is called.
+  /*
+   * "token" should be restored such that
+   * "token" is same as the token before this function is called.
+   */
   return NULL;
 }
 /*** AST parser ***/
