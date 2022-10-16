@@ -5,7 +5,6 @@
 #ifndef JCC_H_
 #define JCC_H_
 
-
 /*** Token definition ***/
 typedef enum {
   TK_RESERVED,
@@ -110,6 +109,14 @@ extern char *user_input;   // whole program
 extern Node *programs[100];
 extern int label_num;
 /*** GLOBAL VARIALBES ***/
+
+void Tokenize();
+void BuildAST();
+void PrintAssembly(Node *node);
+void ExitWithErrorAt(char *input, char *loc, char *fmt, ...);
+void ExitWithError(char *fmt, ...);
+bool StartsWith(char *p, char *possible_suffix);
+bool IsAlnumOrUnderscore(char c);
 
 
 #endif  // JCC_H_

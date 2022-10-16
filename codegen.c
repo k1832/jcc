@@ -3,8 +3,6 @@
 
 #include "./jcc.h"
 
-void ExitWithError(char *fmt, ...);
-
 int label_num = 0;
 const int label_digit = 5;
 const char registers[6][4] = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};

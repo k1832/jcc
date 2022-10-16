@@ -11,9 +11,6 @@
 Node *programs[100];
 Node *nd_func_dclr_in_progress;
 
-void ExitWithErrorAt(char *input, char *loc, char *fmt, ...);
-bool StartsWith(char *p, char *suffix);
-
 /*** token processor ***/
 static bool ReservedTokenMatches(char *op) {
   return token->kind == TK_RESERVED &&

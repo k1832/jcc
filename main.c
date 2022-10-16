@@ -4,10 +4,6 @@
 
 #include "./jcc.h"
 
-void Tokenize();
-void BuildAST();
-void PrintAssembly(Node *node);
-
 int main(int argc, char **argv) {
   if (argc != 2) {
     fprintf(stderr, "Exactly one argument must be passed.\n");

@@ -10,10 +10,6 @@
 Token *token;       // token currently processed
 char *user_input;   // whole program
 
-void ExitWithErrorAt(char *input, char *loc, char *fmt, ...);
-bool StartsWith(char *p, char *suffix);
-bool IsAlnumOrUnderscore(char c);
-
 /*** tokenizer ***/
 static Token *ConnectAndGetNewToken(
     TokenKind kind, Token *current, char *str, int len
