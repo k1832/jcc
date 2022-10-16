@@ -9,7 +9,7 @@
 #include "./jcc.h"
 
 Node *programs[100];
-Node *nd_func_dclr_in_progress;
+Node *nd_func_being_defined;
 
 /*** token processor ***/
 static bool ReservedTokenMatches(char *op) {
@@ -58,7 +58,7 @@ static void ValidateToken(TokenKind kind) {
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wreturn-type"
-// This program exits with the error function.
+// This program exits in the error function.
 // No return value is needed after the function.
 static Token *ExpectIdentifier() {
   Token *tok = ConsumeAndGetIfIdent();
@@ -125,6 +125,7 @@ static LVar *NewLVar(Node *node, Token *tok) {
 
 // Make sure one parameter name is used only once at most.
 static void ValidateParamName(Node *node, Token *new_param) {
+  assert(node->kind == ND_FUNC_DEFINITION);
   assert(new_param->kind == TK_IDENT);
 
   LVar *param = node->params_linked_list_head;
@@ -146,12 +147,16 @@ static void ValidateParamName(Node *node, Token *new_param) {
 }
 
 /*
+ * Add a new parameter to a function.
  * Create a new local variable and
- * link it to the linked-list of parameters.
- * This linked list is used for
- * transfering values into stack frame.
+ * link it to the parameter linked-list.
+ * This linked-list is used to stack
+ * actual arguments to the stack frame
+ * when the function is called.
  */
-static void NewParam(Node *node, Token *tok) {
+static void NewFuncParam(Node *node, Token *tok) {
+  assert(node->kind == ND_FUNC_DEFINITION);
+
   ++(node->argc);
   ++(node->num_parameters);
   LVar *local = NewLVar(node, tok);
@@ -238,13 +243,13 @@ void BuildAST() {
  *  "while" "(" Expression ")" StatementOrExpr
  *  "for" "(" Expression? ";" Expression? ";" Expression? ")" StatementOrExpr |
  *  "{" StatementOrExpr* "}" |
- *  Expression ";"
+ *  Expression ";" |
+ *  "int" "*"? identifier ";" |
  *
  *  "int" identifier "(" ( "int" identifier ("," "int" identifier) )? ")" "{"
  *    StatementOrExpr*
- *   "}" |
+ *  "}"
  *
- *  "int" "*"? identifier ";"
  */
 static Node *StatementOrExpr() {
   if (ConsumeIfKindMatches(TK_RETURN)) {
@@ -327,7 +332,7 @@ static Node *StatementOrExpr() {
     // local variable
     Node *node = NewNode(ND_LVAR);
     LVar *local =
-      GetDeclaredLocal(nd_func_dclr_in_progress, variable_or_func_name);
+      GetDeclaredLocal(nd_func_being_defined, variable_or_func_name);
 
     if (local) {
       ExitWithErrorAt(user_input, token_after_variable_type->str,
@@ -336,7 +341,7 @@ static Node *StatementOrExpr() {
         variable_or_func_name->str);
     }
 
-    local = NewLVar(nd_func_dclr_in_progress, variable_or_func_name);
+    local = NewLVar(nd_func_being_defined, variable_or_func_name);
     node->offset = local->offset;
     return node;
   }
@@ -349,15 +354,15 @@ static Node *StatementOrExpr() {
    * Function declaration
    * TODO(k1832): Check for multiple definition with same name
    */
-  Node *nd_func_dclr = NewNode(ND_FUNC_DECLARATION);
-  nd_func_dclr->func_name = variable_or_func_name->str;
-  nd_func_dclr->func_name_len = variable_or_func_name->len;
+  Node *nd_func_define = NewNode(ND_FUNC_DEFINITION);
+  nd_func_define->func_name = variable_or_func_name->str;
+  nd_func_define->func_name_len = variable_or_func_name->len;
 
   Expect("(");
   while (ConsumeIfKindMatches(TK_INT)) {
     Token *ident_param = ExpectIdentifier();
-    ValidateParamName(nd_func_dclr, ident_param);
-    NewParam(nd_func_dclr, ident_param);
+    ValidateParamName(nd_func_define, ident_param);
+    NewFuncParam(nd_func_define, ident_param);
     if (!ConsumeIfReservedTokenMatches(",")) {
       break;
     }
@@ -366,17 +371,17 @@ static Node *StatementOrExpr() {
   Expect(")");
 
   Expect("{");
-  nd_func_dclr_in_progress = nd_func_dclr;
+  nd_func_being_defined = nd_func_define;
 
-  Node *node_in_block = nd_func_dclr;
+  Node *node_in_block = nd_func_define;
   while (!ConsumeIfReservedTokenMatches("}")) {
     node_in_block->next_in_block = StatementOrExpr();
     node_in_block = node_in_block->next_in_block;
   }
   // Reset the node that's currently being processed function.
-  nd_func_dclr_in_progress = NULL;
+  nd_func_being_defined = NULL;
 
-  return nd_func_dclr;
+  return nd_func_define;
 }
 
 // Expression     = Assignment
@@ -567,7 +572,7 @@ static Node *RefDefLvar() {
 
   Token *ident = ExpectIdentifier();
   Node *node = NewNode(ND_LVAR);
-  LVar *local = GetDeclaredLocal(nd_func_dclr_in_progress, ident);
+  LVar *local = GetDeclaredLocal(nd_func_being_defined, ident);
   if (!local) {
     ExitWithErrorAt(user_input, ident->str,
       "Undeclared variable \"%.*s\"", ident->len, ident->str);

@@ -187,7 +187,7 @@ void PrintAssembly(Node *node) {
     return;
   }
 
-  if (node->kind == ND_FUNC_DECLARATION) {
+  if (node->kind == ND_FUNC_DEFINITION) {
     printf("  # %s (%s): at line %d\n", __FILE__, __func__, __LINE__);
     printf("%.*s:\n", node->func_name_len, node->func_name);
     // prologue
