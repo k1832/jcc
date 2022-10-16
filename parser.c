@@ -56,18 +56,17 @@ static void ValidateToken(TokenKind kind) {
   ExitWithErrorAt(user_input, token->str, "Unexpected token.");
 }
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wreturn-type"
+// This program exits with the error function.
+// No return value is needed after the function.
 static Token *ExpectIdentifier() {
   Token *tok = ConsumeAndGetIfIdent();
   if (tok) return tok;
 
   ExitWithErrorAt(user_input, token->str, "Expected identifier.");
 }
-
-static void ExpectSpecificToken(TokenKind kind) {
-  if (ConsumeIfKindMatches(kind)) return;
-
-  ExitWithErrorAt(user_input, token->str, "Unexpected token.");
-}
+#pragma GCC diagnostic pop
 
 static void Expect(char *op) {
   if (ConsumeIfReservedTokenMatches(op)) return;

@@ -319,6 +319,9 @@ void PrintAssembly(Node *node) {
       printf("  setle al\n");
       printf("  movzb rax, al\n");
       break;
+    default:
+      ExitWithError("node->kind %u is not handled in %s",
+                    node->kind, __FUNCTION__);
   }
 
   printf("  push rax\n");

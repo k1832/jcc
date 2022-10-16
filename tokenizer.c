@@ -23,6 +23,10 @@ static Token *ConnectAndGetNewToken(
   return new_token;
 }
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wuninitialized"
+// Handling global variables that are pointers.
+// They are not necessarily initialized in this function.
 void Tokenize() {
   char *char_pointer = user_input;
   Token *head;
@@ -120,4 +124,5 @@ void Tokenize() {
   ConnectAndGetNewToken(TK_EOF, cur, char_pointer, 1);
   token = head->next;
 }
+#pragma GCC diagnostic pop
 /*** tokenizer ***/
