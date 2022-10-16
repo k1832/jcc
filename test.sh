@@ -120,8 +120,11 @@ assert 25 "int ten_sum(int a, int b, int c, int d, int e, int f, int g, int h, i
 assert 0 "int main() {10%5;}"
 assert 2 "int main() {10%4;}"
 assert 4 "int main() {3+5%2;}"
-assert 0 "int is_prime(int n) {if(n==2) return 1; int i; for(i=2; i*i<=n; i=i+1) {if(n%i==0) return 0;} return 1;} int main() {return is_prime(10);}"
-assert 1 "int is_prime(int n) {if(n==2) return 1; int i; for(i=2; i*i<=n; i=i+1) {if(n%i==0) return 0;} return 1;} int main() {return is_prime(7);}"
+assert 1 "int is_prime(int n) {if(n<=1) return 0; int i; for(i=2; i*i<=n; i=i+1) {if(n%i==0) return 0;} return 1;} int main() {return is_prime(7);}"
+assert 0 "int is_prime(int n) {if(n<=1) return 0; int i; for(i=2; i*i<=n; i=i+1) {if(n%i==0) return 0;} return 1;} int main() {return is_prime(10);}"
+assert 1 "int is_prime(int n) {if(n<=1) return 0; int i; for(i=2; i*i<=n; i=i+1) {if(n%i==0) return 0;} return 1;} int main() {return is_prime(89);}"
+assert 1 "int is_prime(int n) {if(n<=1) return 0; int i; for(i=2; i*i<=n; i=i+1) {if(n%i==0) return 0;} return 1;} int main() {return is_prime(97);}"
+assert 0 "int is_prime(int n) {if(n<=1) return 0; int i; for(i=2; i*i<=n; i=i+1) {if(n%i==0) return 0;} return 1;} int main() {return is_prime(97 * 89);}"
 
 # accessing address and dereferecing using adress (*, &)
 assert 3 "int main() {int x; int *y; x=3; y=&x; return *y;}"
