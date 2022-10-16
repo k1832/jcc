@@ -184,12 +184,10 @@ static void NewFuncParam(Node *nd_func, Token *tok) {
 
 
 /*** function call ***/
-static ArgsForCall *NewArg(Node *nd_func_call, Node *new_arg) {
-  ArgsForCall *arg = calloc(1, sizeof(ArgsForCall));
-  arg->node = new_arg;
-  arg->next = nd_func_call->args_linked_list_head;
-  nd_func_call->args_linked_list_head = arg;
-  return arg;
+static void NewArg(Node *nd_func_call, Node *new_arg) {
+  // Add new argument at the head of linked list
+  new_arg->arg_next = nd_func_call->arg_next;
+  nd_func_call->arg_next = new_arg;
 }
 /*** function call ***/
 

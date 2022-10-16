@@ -32,11 +32,6 @@ struct Token {
 
 /*** AST definition ***/
 typedef struct Node Node;
-typedef struct ArgsForCall ArgsForCall;
-struct ArgsForCall {
-  Node *node;
-  ArgsForCall *next;
-};
 
 typedef enum {
   ND_ADD,
@@ -75,9 +70,7 @@ struct Node {
   Node *iteration;                      // for ND_FOR
   Node *next_in_block;                  // for ND_BLOCK
 
-  // for ND_FUNC_CALL, link new token to head
-  ArgsForCall *args_linked_list_head;
-
+  // function
   char *func_name;
   int func_name_len;
   Node *local_var_next;                 // link new token to head
@@ -86,7 +79,10 @@ struct Node {
   int argc;                             // for ND_FUNC_CALL, ND_FUNC_DECLARATION
   int num_parameters;                   // for ND_FUNC_DECLARATION
 
-  // Used for variables
+  // function call
+  Node *arg_next;                       // link new token to head
+
+  // variables
   char *var_name;
   int var_name_len;
   int val;

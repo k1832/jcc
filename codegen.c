@@ -165,20 +165,20 @@ void PrintAssembly(Node *node) {
     // Push arguments after the first 6 arguments
     // reversely to stack
     int argv_i = node->argc;
-    ArgsForCall *args_for_call = node->args_linked_list_head;
+    Node *argument = node->arg_next;  // head of arg linked-list
     while (argv_i > 6) {
-      PrintAssembly(args_for_call->node);
+      PrintAssembly(argument);
       // leave the result in stack
 
-      args_for_call = args_for_call->next;
+      argument = argument->arg_next;
       --argv_i;
     }
     while (argv_i) {
       // Transfer results to registers specified by ABI.
-      PrintAssembly(args_for_call->node);
+      PrintAssembly(argument);
       printf("  pop %s\n", registers[argv_i - 1]);
 
-      args_for_call = args_for_call->next;
+      argument = argument->arg_next;
       --argv_i;
     }
     // TODO(k1832): 16byte allignment?
