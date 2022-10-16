@@ -129,7 +129,7 @@ assert 10 "int main() {int x; int *y; x=10; y=&x; return *y;}"
 assert 3 "int main() {int x; int y; int *z; x=3; y=5; z=&y+8; return *z;}"
 assert 10 "int main() {int x; int y; int *z; x=10; y=5; z=&y+8; return *z;}"
 
-# TODO(k1832): Add tests with (* or &) and ("++" or "--")
+# TODO(k1832): Add tests with both (* or &) and ("++" or "--")
 # Pre increment
 assert 11 "int main() {int a; a=10; ++a; return a;}"
 assert 11 "int main() {int a; int b; a=10; b=++a; return b;}"
