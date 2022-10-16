@@ -59,6 +59,17 @@ typedef enum {
   ND_PRE_DECREMENT,
 } NodeKind;
 
+typedef enum {
+  TY_PTR,
+  TY_INT,
+} TypeKind;
+
+typedef struct Type Type;
+struct Type {
+  TypeKind kind;
+  Type *point_to;
+};
+
 struct Node {
   NodeKind kind;
   Node *lhs;
@@ -83,6 +94,7 @@ struct Node {
   Node *arg_next;                       // link new token to head
 
   // variables
+  Type *type;  // variable type or return value type
   char *var_name;
   int var_name_len;
   int val;

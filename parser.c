@@ -12,10 +12,18 @@ Node *programs[100];
 Node *nd_func_being_defined;
 
 /*** token processor ***/
+// static void DebugToken() {
+//   printf("token: %.*s\n", token->len, token->str);
+// }
+
 static bool ReservedTokenMatches(char *op) {
   return token->kind == TK_RESERVED &&
     token->len == strlen(op) &&
     StartsWith(token->str, op);
+}
+
+static void ConsumeToken() {
+  token = token->next;
 }
 
 static bool ConsumeIfReservedTokenMatches(char *op) {
@@ -23,7 +31,7 @@ static bool ConsumeIfReservedTokenMatches(char *op) {
     return false;
   }
 
-  token = token->next;
+  ConsumeToken();
   return true;
 }
 
@@ -37,7 +45,7 @@ static Token *ConsumeAndGetIfIdent() {
   }
 
   Token *ident_token = token;
-  token = token->next;
+  ConsumeToken();
   return ident_token;
 }
 
@@ -46,20 +54,17 @@ static bool ConsumeIfKindMatches(TokenKind kind) {
     return false;
   }
 
-  token = token->next;
+  ConsumeToken();
   return true;
 }
 
-static void ValidateToken(TokenKind kind) {
-  if (token->kind == kind) return;
-
-  ExitWithErrorAt(user_input, token->str, "Unexpected token.");
-}
-
+/*
+ * [ignored "-Wreturn-type"]:
+ *  This program exits in the error function.
+ *  No return value is needed after the function.
+ */
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wreturn-type"
-// This program exits in the error function.
-// No return value is needed after the function.
 static Token *ExpectIdentifier() {
   Token *tok = ConsumeAndGetIfIdent();
   if (tok) return tok;
@@ -91,8 +96,78 @@ static int ExpectNumber() {
 static bool AtEOF() {
   return token->kind == TK_EOF;
 }
+
+static bool IsTypeToken() {
+  switch (token->kind) {
+  case TK_INT:
+    return true;
+
+  default:
+    return false;
+  }
+}
+
+static void ValidateTypeToken() {
+  if (IsTypeToken()) return;
+
+  ExitWithErrorAt(user_input, token->str, "Expected a type token.");
+}
+
+/*
+ * Parses type and returns it.
+ * [ignored "-Wreturn-type"]:
+ *  This function exits when the token is unexpected type.
+ */
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wreturn-type"
+static Type *GetType() {
+  assert(IsTypeToken());
+
+  // TK_INT,
+  Token *base_type_token = token;
+  ConsumeToken();  // Skip base type token for now
+
+  Type *type = calloc(1, sizeof(Type));
+  Type *current = type;
+  while (ConsumeIfReservedTokenMatches("*")) {
+    Type *point_to = calloc(1, sizeof(Type));
+    current->kind = TY_PTR;
+    current->point_to = point_to;
+    current = point_to;
+  }
+
+  switch (base_type_token->kind) {
+  case TK_INT:
+    current->kind = TY_INT;
+    return type;
+
+  default:
+    ExitWithErrorAt(user_input, base_type_token->str, "Unsupported type.");
+  }
+}
+#pragma GCC diagnostic pop
 /*** token processor ***/
 
+
+/*** AST builder ***/
+static Node *NewNode(NodeKind kind) {
+  Node *node = calloc(1, sizeof(Node));
+  node->kind = kind;
+  return node;
+}
+
+static Node *NewBinary(NodeKind kind, Node *lhs, Node *rhs) {
+  Node *node = NewNode(kind);
+  node->lhs = lhs;
+  node->rhs = rhs;
+  return node;
+}
+
+static Node *NewNodeNumber(int val) {
+  Node *node = NewNode(ND_NUM);
+  node->val = val;
+  return node;
+}
 
 /*** local variable ***/
 static Node *GetDeclaredLocal(Node *nd_block, Token *tok) {
@@ -108,10 +183,11 @@ static Node *GetDeclaredLocal(Node *nd_block, Token *tok) {
   return NULL;
 }
 
-static Node *NewLVar(Node *nd_func, Token *tok) {
-  Node *lvar = calloc(1, sizeof(Node));
-  lvar->var_name = tok->str;
-  lvar->var_name_len = tok->len;
+static Node *NewLVar(Node *nd_func, Token *ident, Type *type) {
+  Node *lvar = NewNode(ND_LVAR);
+  lvar->var_name = ident->str;
+  lvar->var_name_len = ident->len;
+  lvar->type = type;
   if (!nd_func->local_var_next) {
     // First variable
     nd_func->next_offset_in_block = 8;
@@ -155,12 +231,12 @@ static void ValidateParamName(Node *nd_func, Token *new_param) {
  * actual arguments to the stack frame
  * when the function is called.
  */
-static void NewFuncParam(Node *nd_func, Token *tok) {
+static void NewFuncParam(Node *nd_func, Token *ident, Type *type) {
   assert(nd_func->kind == ND_FUNC_DEFINITION);
 
   ++(nd_func->argc);
   ++(nd_func->num_parameters);
-  Node *local = NewLVar(nd_func, tok);
+  Node *local = NewLVar(nd_func, ident, type);
 
   if (nd_func->argc > 6) {
     /*
@@ -190,27 +266,6 @@ static void NewArg(Node *nd_func_call, Node *new_arg) {
   nd_func_call->arg_next = new_arg;
 }
 /*** function call ***/
-
-
-/*** AST parser ***/
-static Node *NewNode(NodeKind kind) {
-  Node *node = calloc(1, sizeof(Node));
-  node->kind = kind;
-  return node;
-}
-
-static Node *NewBinary(NodeKind kind, Node *lhs, Node *rhs) {
-  Node *node = NewNode(kind);
-  node->lhs = lhs;
-  node->rhs = rhs;
-  return node;
-}
-
-static Node *NewNodeNumber(int val) {
-  Node *node = NewNode(ND_NUM);
-  node->val = val;
-  return node;
-}
 
 void BuildAST();
 static Node *StatementOrExpr();
@@ -243,9 +298,9 @@ void BuildAST() {
  *  "for" "(" Expression? ";" Expression? ";" Expression? ")" StatementOrExpr |
  *  "{" StatementOrExpr* "}" |
  *  Expression ";" |
- *  "int" "*"? identifier ";" |
+ *  "int" "*"* identifier ";" |
  *
- *  "int" identifier "(" ( "int" identifier ("," "int" identifier) )? ")" "{"
+ *  "int" "*"* identifier "(" ( "int" "*"* identifier ("," "int" "*"* identifier )? ")" "{"
  *    StatementOrExpr*
  *  "}"
  *
@@ -311,42 +366,37 @@ static Node *StatementOrExpr() {
     return head;
   }
 
-  //  Expression ";"
-  if (!ConsumeIfKindMatches(TK_INT)) {
+  if (!IsTypeToken()) {
+    //  Expression ";"
     Node *node = Expression();
     Expect(";");
     return node;
   }
 
-  /*
-   * "int" "*"? identifier ";"
-   * TOOD(k1832): Distinguish int, int pointer, and etc.
-   */
-  ConsumeIfReservedTokenMatches("*");
-
-  Token *token_after_variable_type = token;
+  // "int" "*"* identifier ";"
+  Type *ret_or_var_type = GetType();
 
   Token *variable_or_func_name = ExpectIdentifier();
+
   if (ConsumeIfReservedTokenMatches(";")) {
     // local variable
-    Node *node = NewNode(ND_LVAR);
     Node *local =
       GetDeclaredLocal(nd_func_being_defined, variable_or_func_name);
 
     if (local) {
-      ExitWithErrorAt(user_input, token_after_variable_type->str,
+      ExitWithErrorAt(user_input, variable_or_func_name->str,
         "Redeclaration of \"%.*s\"",
         variable_or_func_name->len,
         variable_or_func_name->str);
     }
 
-    local = NewLVar(nd_func_being_defined, variable_or_func_name);
-    node->offset = local->offset;
-    return node;
+    return NewLVar(nd_func_being_defined,
+                   variable_or_func_name,
+                   ret_or_var_type);
   }
 
   /*
-   * "int" identifier "(" ( "int" identifier ("," "int" identifier) )? ")" "{"
+   * "int" "*"* identifier "(" ( "int" "*"* identifier ("," "int" "*"* identifier) )? ")" "{"
    *   StatementOrExpr*
    * "}"
    *
@@ -358,15 +408,20 @@ static Node *StatementOrExpr() {
   nd_func_define->func_name_len = variable_or_func_name->len;
 
   Expect("(");
-  while (ConsumeIfKindMatches(TK_INT)) {
+
+  while (IsTypeToken()) {
+    Type *param_type = GetType();
     Token *ident_param = ExpectIdentifier();
     ValidateParamName(nd_func_define, ident_param);
-    NewFuncParam(nd_func_define, ident_param);
+    NewFuncParam(nd_func_define, ident_param, param_type);
+
     if (!ConsumeIfReservedTokenMatches(",")) {
       break;
     }
-    ValidateToken(TK_INT);
+
+    ValidateTypeToken();
   }
+
   Expect(")");
 
   Expect("{");

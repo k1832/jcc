@@ -199,8 +199,7 @@ void PrintAssembly(Node *node) {
 
 
     // Transfer argument values into stack frame
-    // This is the first parameter of the function.
-    Node *param = node->param_next;
+    Node *param = node->param_next;  // The first param of the function
     int param_i = node->num_parameters;
     while (param_i > 6) {
       // No need to transfer values for arguments after the first 6 arguments
