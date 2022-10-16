@@ -31,14 +31,6 @@ struct Token {
 
 
 /*** AST definition ***/
-typedef struct LVar LVar;
-struct LVar {
-  LVar *next;
-  char *name;
-  int len;
-  int offset;
-};
-
 typedef struct Node Node;
 typedef struct ArgsForCall ArgsForCall;
 struct ArgsForCall {
@@ -88,11 +80,15 @@ struct Node {
 
   char *func_name;
   int func_name_len;
-  LVar *locals_linked_list_head;    // link new token to head
-  LVar *params_linked_list_head;    // link new token to head
+  Node *local_var_next;                 // link new token to head
+  Node *param_next;                     // link new token to head
   int next_offset_in_block;
   int argc;                             // for ND_FUNC_CALL, ND_FUNC_DECLARATION
   int num_parameters;                   // for ND_FUNC_DECLARATION
+
+  // Used for variables
+  char *var_name;
+  int var_name_len;
   int val;
   int offset;
 

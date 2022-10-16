@@ -95,48 +95,49 @@ static bool AtEOF() {
 
 
 /*** local variable ***/
-static LVar *GetDeclaredLocal(Node *node, Token *tok) {
+static Node *GetDeclaredLocal(Node *nd_block, Token *tok) {
   for (
-    LVar *local = node->locals_linked_list_head;
+    Node *local = nd_block->local_var_next;
     local;
-    local = local->next
+    local = local->local_var_next
   ) {
-    if (local->len != tok->len) continue;
-    if (memcmp(local->name, tok->str, local->len)) continue;
+    if (local->var_name_len != tok->len) continue;
+    if (memcmp(local->var_name, tok->str, local->var_name_len)) continue;
     return local;
   }
   return NULL;
 }
 
-static LVar *NewLVar(Node *node, Token *tok) {
-  LVar *local = calloc(1, sizeof(LVar));
-  local->name = tok->str;
-  local->len = tok->len;
-  if (!node->locals_linked_list_head) {
-    node->next_offset_in_block = 8;
+static Node *NewLVar(Node *nd_func, Token *tok) {
+  Node *lvar = calloc(1, sizeof(Node));
+  lvar->var_name = tok->str;
+  lvar->var_name_len = tok->len;
+  if (!nd_func->local_var_next) {
+    // First variable
+    nd_func->next_offset_in_block = 8;
   }
   // TODO(k1832): exit when number of local variables exceeds the limit.
-  local->next = node->locals_linked_list_head;
-  local->offset = node->next_offset_in_block;
-  node->next_offset_in_block += 8;
-  node->locals_linked_list_head = local;
-  return local;
+  lvar->local_var_next = nd_func->local_var_next;
+  lvar->offset = nd_func->next_offset_in_block;
+  nd_func->next_offset_in_block += 8;
+  nd_func->local_var_next = lvar;
+  return lvar;
 }
 
 // Make sure one parameter name is used only once at most.
-static void ValidateParamName(Node *node, Token *new_param) {
-  assert(node->kind == ND_FUNC_DEFINITION);
+static void ValidateParamName(Node *nd_func, Token *new_param) {
+  assert(nd_func->kind == ND_FUNC_DEFINITION);
   assert(new_param->kind == TK_IDENT);
 
-  LVar *param = node->params_linked_list_head;
+  Node *param = nd_func->param_next;
   while (param) {
-    if (new_param->len != param->len) {
-      param = param->next;
+    if (new_param->len != param->var_name_len) {
+      param = param->param_next;
       continue;
     }
 
-    if (memcmp(new_param->str, param->name, new_param->len)) {
-      param = param->next;
+    if (memcmp(new_param->str, param->var_name, new_param->len)) {
+      param = param->param_next;
       continue;
     }
 
@@ -154,14 +155,14 @@ static void ValidateParamName(Node *node, Token *new_param) {
  * actual arguments to the stack frame
  * when the function is called.
  */
-static void NewFuncParam(Node *node, Token *tok) {
-  assert(node->kind == ND_FUNC_DEFINITION);
+static void NewFuncParam(Node *nd_func, Token *tok) {
+  assert(nd_func->kind == ND_FUNC_DEFINITION);
 
-  ++(node->argc);
-  ++(node->num_parameters);
-  LVar *local = NewLVar(node, tok);
+  ++(nd_func->argc);
+  ++(nd_func->num_parameters);
+  Node *local = NewLVar(nd_func, tok);
 
-  if (node->argc > 6) {
+  if (nd_func->argc > 6) {
     /*
      * According to the ABI,
      * arguments after the first 6 arguments
@@ -169,15 +170,15 @@ static void NewFuncParam(Node *node, Token *tok) {
      * before calling a function.
      * So offsets for them become negative values.
      */
-    local->offset = -(8 * (node->argc - 7) + 16);
-    node->next_offset_in_block -= 8;
+    local->offset = -(8 * (nd_func->argc - 7) + 16);
+    nd_func->next_offset_in_block -= 8;
   }
 
   // Link new variable to linked-list.
-  if (node->params_linked_list_head) {
-    local->next = node->params_linked_list_head;
+  if (nd_func->param_next) {
+    local->param_next = nd_func->param_next;
   }
-  node->params_linked_list_head = local;
+  nd_func->param_next = local;
 }
 /*** local variable ***/
 
@@ -331,7 +332,7 @@ static Node *StatementOrExpr() {
   if (ConsumeIfReservedTokenMatches(";")) {
     // local variable
     Node *node = NewNode(ND_LVAR);
-    LVar *local =
+    Node *local =
       GetDeclaredLocal(nd_func_being_defined, variable_or_func_name);
 
     if (local) {
@@ -572,7 +573,7 @@ static Node *RefDefLvar() {
 
   Token *ident = ExpectIdentifier();
   Node *node = NewNode(ND_LVAR);
-  LVar *local = GetDeclaredLocal(nd_func_being_defined, ident);
+  Node *local = GetDeclaredLocal(nd_func_being_defined, ident);
   if (!local) {
     ExitWithErrorAt(user_input, ident->str,
       "Undeclared variable \"%.*s\"", ident->len, ident->str);

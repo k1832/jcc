@@ -197,14 +197,16 @@ void PrintAssembly(Node *node) {
     const int bytes_per_variable = 8;
     printf("  sub rsp, %d\n", num_variables * bytes_per_variable);
 
+
     // Transfer argument values into stack frame
-    LVar *param = node->params_linked_list_head;
+    // This is the first parameter of the function.
+    Node *param = node->param_next;
     int param_i = node->num_parameters;
     while (param_i > 6) {
       // No need to transfer values for arguments after the first 6 arguments
       // because they are allowed to be out of the stack frame and
       // will be accessed with negative offset.
-      param = param->next;
+      param = param->param_next;
       --param_i;
     }
 
@@ -212,7 +214,7 @@ void PrintAssembly(Node *node) {
       printf("  mov rax, rbp\n");
       printf("  sub rax, %d\n", param->offset);
       printf("  mov [rax], %s\n", registers[param_i - 1]);
-      param = param->next;
+      param = param->param_next;
       --param_i;
     }
 
