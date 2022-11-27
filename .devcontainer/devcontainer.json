@@ -4,7 +4,7 @@
         "dockerfile": "Dockerfile"
     },
     "extensions": [
-        "ms-vscode.cpptools-extension-pack",
+        "llvm-vs-code-extensions.vscode-clangd",
         "donjayamanne.githistory",
         "eamodio.gitlens"
     ]

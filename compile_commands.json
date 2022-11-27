@@ -1,0 +1,82 @@
+[
+  {
+    "arguments": [
+      "/usr/bin/x86_64-linux-gnu-gcc-10",
+      "-std=c11",
+      "-g",
+      "-Wall",
+      "-Werror",
+      "-c",
+      "-o",
+      "codegen.o",
+      "codegen.c"
+    ],
+    "directory": "/home/keitas/jcc",
+    "file": "/home/keitas/jcc/codegen.c",
+    "output": "/home/keitas/jcc/codegen.o"
+  },
+  {
+    "arguments": [
+      "/usr/bin/x86_64-linux-gnu-gcc-10",
+      "-std=c11",
+      "-g",
+      "-Wall",
+      "-Werror",
+      "-c",
+      "-o",
+      "main.o",
+      "main.c"
+    ],
+    "directory": "/home/keitas/jcc",
+    "file": "/home/keitas/jcc/main.c",
+    "output": "/home/keitas/jcc/main.o"
+  },
+  {
+    "arguments": [
+      "/usr/bin/x86_64-linux-gnu-gcc-10",
+      "-std=c11",
+      "-g",
+      "-Wall",
+      "-Werror",
+      "-c",
+      "-o",
+      "parser.o",
+      "parser.c"
+    ],
+    "directory": "/home/keitas/jcc",
+    "file": "/home/keitas/jcc/parser.c",
+    "output": "/home/keitas/jcc/parser.o"
+  },
+  {
+    "arguments": [
+      "/usr/bin/x86_64-linux-gnu-gcc-10",
+      "-std=c11",
+      "-g",
+      "-Wall",
+      "-Werror",
+      "-c",
+      "-o",
+      "tokenizer.o",
+      "tokenizer.c"
+    ],
+    "directory": "/home/keitas/jcc",
+    "file": "/home/keitas/jcc/tokenizer.c",
+    "output": "/home/keitas/jcc/tokenizer.o"
+  },
+  {
+    "arguments": [
+      "/usr/bin/x86_64-linux-gnu-gcc-10",
+      "-std=c11",
+      "-g",
+      "-Wall",
+      "-Werror",
+      "-c",
+      "-o",
+      "util.o",
+      "util.c"
+    ],
+    "directory": "/home/keitas/jcc",
+    "file": "/home/keitas/jcc/util.c",
+    "output": "/home/keitas/jcc/util.o"
+  }
+]
