@@ -177,8 +177,8 @@ static Node *GetDeclaredLocal(Node *nd_block, Token *tok) {
     local = local->local_var_next
   ) {
     if (local->var_name_len != tok->len) continue;
-    if (memcmp(local->var_name, tok->str, local->var_name_len)) continue;
-    return local;
+    if (strncmp(local->var_name, tok->str, local->var_name_len)) continue;
+  return local;
   }
   return NULL;
 }
