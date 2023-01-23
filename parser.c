@@ -8,12 +8,15 @@
 
 #include "./jcc.h"
 
-Node *programs[100];
+#define PROGRAM_LEN 100
+
+Node *programs[PROGRAM_LEN];
 Node *nd_func_being_defined;
 
 /*** token processor ***/
-// static void DebugToken() {
-//   printf("token: %.*s\n", token->len, token->str);
+// DEBUG
+// static void DebugToken(char *s) {
+//   printf("%s token: %.*s\n", s, token->len, token->str);
 // }
 
 static bool ReservedTokenMatches(char *op) {
@@ -92,19 +95,11 @@ static int ExpectNumber() {
   token = token->next;
   return val;
 }
+/*** token processor ***/
+
 
 static bool AtEOF() {
   return token->kind == TK_EOF;
-}
-
-static bool IsTypeToken() {
-  switch (token->kind) {
-  case TK_INT:
-    return true;
-
-  default:
-    return false;
-  }
 }
 
 static void ValidateTypeToken() {
@@ -113,46 +108,16 @@ static void ValidateTypeToken() {
   ExitWithErrorAt(user_input, token->str, "Expected a type token.");
 }
 
-/*
- * Parses type and returns it.
- * [ignored "-Wreturn-type"]:
- *  This function exits when the token is unexpected type.
- */
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wreturn-type"
-static Type *GetType() {
-  assert(IsTypeToken());
 
-  // TK_INT,
-  Token *base_type_token = token;
-  ConsumeToken();  // Skip base type token for now
-
-  Type *type = calloc(1, sizeof(Type));
-  Type *current = type;
-  while (ConsumeIfReservedTokenMatches("*")) {
-    Type *point_to = calloc(1, sizeof(Type));
-    current->kind = TY_PTR;
-    current->point_to = point_to;
-    current = point_to;
-  }
-
-  switch (base_type_token->kind) {
-  case TK_INT:
-    current->kind = TY_INT;
-    return type;
-
-  default:
-    ExitWithErrorAt(user_input, base_type_token->str, "Unsupported type.");
-  }
-}
-#pragma GCC diagnostic pop
-/*** token processor ***/
-
-
-/*** AST builder ***/
 static Node *NewNode(NodeKind kind) {
   Node *node = calloc(1, sizeof(Node));
   node->kind = kind;
+  return node;
+}
+
+static Node *NewNodeNumber(int val) {
+  Node *node = NewNode(ND_NUM);
+  node->val = val;
   return node;
 }
 
@@ -163,11 +128,12 @@ static Node *NewBinary(NodeKind kind, Node *lhs, Node *rhs) {
   return node;
 }
 
-static Node *NewNodeNumber(int val) {
-  Node *node = NewNode(ND_NUM);
-  node->val = val;
+static Node *NewUnary(NodeKind kind, Node *nd) {
+  Node *node = NewNode(kind);
+  node->lhs = nd;
   return node;
 }
+
 
 /*** local variable ***/
 static Node *GetDeclaredLocal(Node *nd_block, Token *tok) {
@@ -185,8 +151,11 @@ static Node *GetDeclaredLocal(Node *nd_block, Token *tok) {
 
 static Node *NewLVar(Node *nd_func, Token *ident, Type *type) {
   Node *lvar = NewNode(ND_LVAR);
-  lvar->var_name = ident->str;
-  lvar->var_name_len = ident->len;
+  if (ident) {
+    // Temporary variable
+    lvar->var_name = ident->str;
+    lvar->var_name_len = ident->len;
+  }
   lvar->type = type;
   if (!nd_func->local_var_next) {
     // First variable
@@ -198,6 +167,37 @@ static Node *NewLVar(Node *nd_func, Token *ident, Type *type) {
   nd_func->next_offset_in_block += 8;
   nd_func->local_var_next = lvar;
   return lvar;
+}
+
+/*
+ * Gets lvar node and set offset for it,
+ * then returns the node
+ */
+static Node *GetLvarNodeFromIdent(Token *ident) {
+  Node *lvar = NewNode(ND_LVAR);
+  Node *local = GetDeclaredLocal(nd_func_being_defined, ident);
+  if (!local) {
+    return NULL;
+  }
+  lvar->offset = local->offset;
+  return lvar;
+}
+/*** local variable ***/
+
+
+/*** function call/definition ***/
+/*
+ * Can be called with ND_FUNC_CALL or ND_FUNC_DEFINITION.
+ * This function compares 2 nodes and return true iff
+ * 2 nodes have the same function name.
+ */
+static bool FuncNamesMatch(Node *nd_a, Node *nd_b) {
+  assert(nd_a && nd_b);
+  assert(nd_a->kind == ND_FUNC_CALL || nd_a->kind == ND_FUNC_DEFINITION);
+  assert(nd_b->kind == ND_FUNC_CALL || nd_b->kind == ND_FUNC_DEFINITION);
+
+  if (nd_a->func_name_len != nd_b->func_name_len) return false;
+  return !strncmp(nd_a->func_name, nd_b->func_name, nd_a->func_name_len);
 }
 
 // Make sure one parameter name is used only once at most.
@@ -256,16 +256,48 @@ static void NewFuncParam(Node *nd_func, Token *ident, Type *type) {
   }
   nd_func->param_next = local;
 }
-/*** local variable ***/
 
-
-/*** function call ***/
 static void NewArg(Node *nd_func_call, Node *new_arg) {
   // Add new argument at the head of linked list
   new_arg->arg_next = nd_func_call->arg_next;
   nd_func_call->arg_next = new_arg;
 }
-/*** function call ***/
+/*** function call/definition ***/
+
+
+/*
+ * Parses type and returns it.
+ * [ignored "-Wreturn-type"]:
+ *  This function exits when the token is unexpected type.
+ */
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wreturn-type"
+Type *GetType() {
+  assert(IsTypeToken());
+
+  // TK_INT,
+  Token *base_type_token = token;
+  ConsumeToken();  // Skip base type token for now
+
+  Type *type = calloc(1, sizeof(Type));
+  Type *current = type;
+  while (ConsumeIfReservedTokenMatches("*")) {
+    Type *point_to = calloc(1, sizeof(Type));
+    current->kind = TY_PTR;
+    current->point_to = point_to;
+    current = point_to;
+  }
+
+  switch (base_type_token->kind) {
+  case TK_INT:
+    current->kind = TY_INT;
+    return type;
+
+  default:
+    ExitWithErrorAt(user_input, base_type_token->str, "Unsupported type.");
+  }
+}
+#pragma GCC diagnostic pop
 
 void BuildAST();
 static Node *StatementOrExpr();
@@ -276,13 +308,16 @@ static Node *Relational();
 static Node *Add();
 static Node *MulDiv();
 static Node *Unary();
-static Node *RefDefLvar();
+static Node *Dereferenceable();
+static Node *Lvar();
 static Node *Primary();
 
 // Store StatementOrExpr into programs
 void BuildAST() {
   int i = 0;
   while (!AtEOF()) {
+    if (i >= PROGRAM_LEN - 1)
+      ExitWithErrorAt(user_input, token->str, "Exceeds max length of program.");
     programs[i++] = StatementOrExpr();
   }
   programs[i] = NULL;
@@ -309,7 +344,7 @@ static Node *StatementOrExpr() {
   if (ConsumeIfKindMatches(TK_RETURN)) {
     Node *lhs = Expression();
     Expect(";");
-    return NewBinary(ND_RETURN, lhs, NULL);
+    return NewUnary(ND_RETURN, lhs);
   }
 
   if (ConsumeIfKindMatches(TK_IF)) {
@@ -406,6 +441,7 @@ static Node *StatementOrExpr() {
   Node *nd_func_define = NewNode(ND_FUNC_DEFINITION);
   nd_func_define->func_name = variable_or_func_name->str;
   nd_func_define->func_name_len = variable_or_func_name->len;
+  nd_func_define->ret_type = ret_or_var_type;
 
   Expect("(");
 
@@ -480,7 +516,7 @@ static Node *Relational() {
     }
 
     if (ConsumeIfReservedTokenMatches(">")) {
-      // Add() < node = node > Add()
+      // (Add() < node) == (node > Add())
       node = NewBinary(ND_LT, Add(), node);
       continue;
     }
@@ -491,7 +527,7 @@ static Node *Relational() {
     }
 
     if (ConsumeIfReservedTokenMatches(">=")) {
-      // Add() <= node = node >= Add()
+      // (Add() <= node) == (node >= Add())
       node = NewBinary(ND_NGT, Add(), node);
       continue;
     }
@@ -500,17 +536,101 @@ static Node *Relational() {
   }
 }
 
+static Node *NewAdd(Node *lhs, Node *rhs) {
+  AddType(lhs);
+  AddType(rhs);
+
+  // Implicit type conversion
+
+  // num + num
+  if (lhs->type->kind == TY_INT && rhs->type->kind == TY_INT) {
+    return NewBinary(ND_ADD, lhs, rhs);
+  }
+
+  if (lhs->type->kind == TY_PTR && rhs->type->kind == TY_PTR) {
+    // TODO(k1832): Add "Token" to each "Node" for better error message
+    ExitWithError("Invalid operands.");
+  }
+
+  // "num + ptr" -> "ptr + num"
+  if (rhs->type->kind == TY_PTR) {
+    // swap "lhs" and "rhs"
+    Node *tmp = lhs;
+    lhs = rhs;
+    rhs = tmp;
+  }
+
+  // (ptr + num) -> ptr - (sizeof(*ptr) * num)
+  rhs = NewBinary(ND_MUL, rhs, NewNodeNumber(8));
+  return NewBinary(ND_SUB, lhs, rhs);
+}
+
+/*
+ * [ignored "-Wreturn-type"]:
+ *  This program exits in the error function.
+ *  No return value is needed after the function.
+ */
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wreturn-type"
+static Node *NewSub(Node *lhs, Node *rhs) {
+  AddType(lhs);
+  AddType(rhs);
+
+  // Implicit type conversion
+
+  // num - num
+  if (lhs->type->kind == TY_INT && rhs->type->kind == TY_INT) {
+    return NewBinary(ND_SUB, lhs, rhs);
+  }
+
+  // ptr - num
+  if (lhs->type->kind == TY_PTR && rhs->type->kind == TY_INT) {
+    // "ptr - num" -> "ptr + sizeof(*ptr) * num"
+    rhs = NewBinary(ND_MUL, rhs, NewNodeNumber(8));
+    Node *node = NewBinary(ND_ADD, lhs, rhs);
+    node->type = lhs->type;
+    return node;
+  }
+
+  // ptr - ptr
+  if (lhs->type->kind == TY_PTR && rhs->type->kind == TY_PTR) {
+    /*
+    * ptr - ptr will return the distance between 2 elements
+    *
+    * int a[10];
+    * int *b = &(a[0]);
+    * int *c = &(a[2]);
+    * printf("%ld\n", c - b);
+    *
+    * -> This will print "2".
+    */
+
+    /*
+     * TODO(k1832): Add good explaination why this should be
+     *              "rhs - lhs" but not reversed order.
+     * TODO(k1832): Check if this still works for array
+     */
+    Node *node = NewBinary(ND_SUB, rhs, lhs);
+    node->type = ty_int;
+    return NewBinary(ND_DIV, node, NewNodeNumber(8));
+  }
+
+  // TODO(k1832): Add "Token" to each "Node" for better error message
+  ExitWithError("Invalid operands.");
+}
+#pragma GCC diagnostic pop
+
 // Add    = MulDiv ("+" MulDiv | "-" MulDiv)*
 static Node *Add() {
   Node *node = MulDiv();
   for (;;) {
     if (ConsumeIfReservedTokenMatches("+")) {
-      node = NewBinary(ND_ADD, node, MulDiv());
+      node = NewAdd(node, MulDiv());
       continue;
     }
 
     if (ConsumeIfReservedTokenMatches("-")) {
-      node = NewBinary(ND_SUB, node, MulDiv());
+      node = NewSub(node, MulDiv());
       continue;
     }
 
@@ -541,98 +661,170 @@ static Node *MulDiv() {
   }
 }
 
+// Convert `lhs op= rhs` to `tmp = &lhs, *tmp = *tmp op rhs`
+static Node *ToAssign(NodeKind op_type, Node *lhs, Node *rhs) {
+  AddType(lhs);
+  AddType(rhs);
+
+  Type *ty_pointer_to_lhs = calloc(1, sizeof(Type));
+  ty_pointer_to_lhs->kind = TY_PTR;
+  ty_pointer_to_lhs->point_to = lhs->type;
+
+  // tmp
+  Node *pointer_to_lhs = NewLVar(nd_func_being_defined,
+                                 NULL, ty_pointer_to_lhs);
+
+  Node *expr1 = NewBinary(ND_ASSIGN, pointer_to_lhs, NewUnary(ND_ADDR, lhs));
+
+  Node *expr2 =
+    NewBinary(ND_ASSIGN,
+               NewUnary(ND_DEREF, pointer_to_lhs),
+               NewBinary(op_type,
+                          NewUnary(ND_DEREF, pointer_to_lhs),
+                          rhs));
+
+
+  return NewBinary(ND_COMMA, expr1, expr2);
+}
+
 /*
  * Unary   =
- *  ("+" | "-")? Primary |
- *  ("+" | "-")? RefDefLvar ("++" | "--")? |
- *  ("++" | "--")? RefDefLvar
+ *  ("+" | "-") Primary |
+ *  "*" Dereferenceable |
+ *  "&" identifier |
+ *  ("++" | "--") Lvar |
+ *  Lvar ("++" | "--")? |
+ *  Primary
  */
 static Node *Unary() {
   if (ConsumeIfReservedTokenMatches("+")) {
     // Just remove "+"
-
-    Node *primary = Primary();
-    if (primary) {
-      return primary;
-    }
-
-    Node *node = RefDefLvar();
-    if (ConsumeIfReservedTokenMatches("++")) {
-      node->post_increment = true;
-      return node;
-    }
-    if (ConsumeIfReservedTokenMatches("--")) {
-      node->post_decrement = true;
-      return node;
-    }
-
-    return node;
+    return Expression();
   }
 
   if (ConsumeIfReservedTokenMatches("-")) {
     // Replace with "0 - Node"
-
-    Node *primary = Primary();
-    if (primary) {
-      return NewBinary(ND_SUB, NewNodeNumber(0), primary);
-    }
-
-    Node *rhs = RefDefLvar();
-    if (ConsumeIfReservedTokenMatches("++")) {
-      rhs->post_increment = true;
-    }
-    if (ConsumeIfReservedTokenMatches("--")) {
-      rhs->post_decrement = true;
-    }
-    Node *node = NewBinary(ND_SUB, NewNodeNumber(0), rhs);
-
-    return node;
+    return NewBinary(ND_SUB, NewNodeNumber(0), Primary());
   }
 
   if (ConsumeIfReservedTokenMatches("++")) {
-    return NewBinary(ND_PRE_INCREMENT, RefDefLvar(), NULL);
+    // "++i" -> "i += 1"
+    return ToAssign(ND_ADD, Lvar(), NewNodeNumber(1));
   }
 
   if (ConsumeIfReservedTokenMatches("--")) {
-    return NewBinary(ND_PRE_DECREMENT, RefDefLvar(), NULL);
+    // "--i" -> "i -= 1"
+    return ToAssign(ND_SUB, Lvar(), NewNodeNumber(1));
   }
+
+  if (ConsumeIfReservedTokenMatches("*")) {
+    return NewUnary(ND_DEREF, Dereferenceable());
+  }
+
+  // "&" identifier
+  if (ConsumeIfReservedTokenMatches("&")) {
+    Token *ident = ExpectIdentifier();
+    Node *lvar = GetLvarNodeFromIdent(ident);
+    if (!lvar) {
+      ExitWithErrorAt(user_input, ident->str, "Undeclared variable");
+    }
+    return NewUnary(ND_ADDR, lvar);
+  }
+
+  Token *stashed_token = token;
+  Node *lvar = Lvar();
+  if (!lvar) {
+    // Primary
+    Node *node = Primary();
+    if (node) return node;
+
+    ExitWithErrorAt(user_input, token->str, "Unexpected token.");
+    return NULL;  // To make cpplint happy
+  }
+
+  // Lvar ("++" | "--") |
+  if (ConsumeIfReservedTokenMatches("++")) {
+    // "i++" -> "(i+=1) - 1"
+    return NewBinary(ND_SUB,
+                      ToAssign(ND_ADD, lvar, NewNodeNumber(1)),
+                      NewNodeNumber(1));
+  }
+  if (ConsumeIfReservedTokenMatches("--")) {
+    // "i--" -> "(i-=1) + 1"
+    return NewBinary(ND_ADD,
+                      ToAssign(ND_SUB, lvar, NewNodeNumber(1)),
+                      NewNodeNumber(1));
+  }
+
+  token = stashed_token;
 
   Node *node = Primary();
   if (node) return node;
 
-  node = RefDefLvar();
-  if (ConsumeIfReservedTokenMatches("++")) {
-    node->post_increment = true;
-  }
-  if (ConsumeIfReservedTokenMatches("--")) {
-    node->post_decrement = true;
-  }
-  return node;
+  node = Lvar();
+  if (node) return node;
+
+  ExitWithErrorAt(user_input, token->str, "Unexpected token.");
+  return NULL;  // To make cpplint happy
 }
 
 /*
- * RefDefLvar =
- *  ("*" | "&")? RefDefLvar |
+ * Dereferenceable =
+ * "(" Dereferenceable ")" |
+ * "*" Add |
+ * "&" identifier
+//  * Add |
+ */
+static Node *Dereferenceable() {
+  // "(" Dereferenceable ")"
+  // if (ConsumeIfReservedTokenMatches("(")) {
+  //   // Node *nd = Dereferenceable();
+  //   Node *nd = Add();
+  //   Expect(")");
+  //   return nd;
+  // }
+
+  // "*" Dereferenceable
+  if (ConsumeIfReservedTokenMatches("*")) {
+    return NewUnary(ND_DEREF, Dereferenceable());
+  }
+
+  // "&" identifier
+  if (ConsumeIfReservedTokenMatches("&")) {
+    Token *ident = ExpectIdentifier();
+    Node *lvar = GetLvarNodeFromIdent(ident);
+    if (!lvar) {
+      ExitWithErrorAt(user_input, ident->str, "Undeclared variable");
+    }
+    return NewUnary(ND_ADDR, lvar);
+  }
+
+  return Add();
+}
+
+/*
+ * Lvar =
+ *  "*" Dereferenceable |
  *  identifier
  */
-static Node *RefDefLvar() {
+static Node *Lvar() {
+  Token *stashed_token = token;
+
+  // "*" Dereferenceable |
   if (ConsumeIfReservedTokenMatches("*")) {
-    return NewBinary(ND_DEREF, RefDefLvar(), NULL);
+    return NewUnary(ND_DEREF, Dereferenceable());
   }
 
-  if (ConsumeIfReservedTokenMatches("&")) {
-    return NewBinary(ND_ADDR, RefDefLvar(), NULL);
+  Token *ident = ConsumeAndGetIfIdent();
+  if (ident) {
+    Node *node = GetLvarNodeFromIdent(ident);
+    if (node) {
+      return node;
+    }
   }
 
-  Token *ident = ExpectIdentifier();
-  Node *node = NewNode(ND_LVAR);
-  Node *local = GetDeclaredLocal(nd_func_being_defined, ident);
-  if (!local) {
-    ExitWithErrorAt(user_input, ident->str,
-      "Undeclared variable \"%.*s\"", ident->len, ident->str);
-  }
-  node->offset = local->offset;
-  return node;
+  token = stashed_token;
+  return NULL;
 }
 
 /*
@@ -641,6 +833,7 @@ static Node *RefDefLvar() {
  * Primary =
  *  "(" Expression ")" |
  *  identifier "(" ( Expression ("," Expression)* )? ")" ) |
+ *  Lvar
  *  number
  */
 static Node *Primary() {
@@ -656,6 +849,7 @@ static Node *Primary() {
     // identifier
     if (ConsumeIfReservedTokenMatches("(")) {
       // Function call
+
       Node *nd_func_call = NewNode(ND_FUNC_CALL);
       nd_func_call->func_name = tok->str;
       nd_func_call->func_name_len = tok->len;
@@ -668,10 +862,33 @@ static Node *Primary() {
          * when there is no argument after a comma.
          */
       }
-      return nd_func_call;
+
+      // Find the corresponding function definition
+      for (int i = 0; i < 100; ++i) {
+        Node *nd = programs[i];
+        if (!nd)
+          break;
+        if (nd->kind != ND_FUNC_DEFINITION)
+          continue;
+        if (!FuncNamesMatch(nd, nd_func_call))
+          continue;
+
+        nd_func_call->func_def = nd;
+        return nd_func_call;
+      }
+
+      // Also function that's currenly being declared is called (recursion)
+      if (FuncNamesMatch(nd_func_being_defined, nd_func_call)) {
+        nd_func_call->func_def = nd_func_being_defined;
+        return nd_func_call;
+      }
     }
     token = stashed_token;
   }
+
+  Node *node = Lvar();
+  if (node) return node;
+
   if (IsNextTokenNumber()) {
     return NewNodeNumber(ExpectNumber());
   }
@@ -682,4 +899,3 @@ static Node *Primary() {
    */
   return NULL;
 }
-/*** AST parser ***/

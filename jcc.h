@@ -57,6 +57,7 @@ typedef enum {
   ND_DEREF,
   ND_PRE_INCREMENT,
   ND_PRE_DECREMENT,
+  ND_COMMA,   // Expression, Expression
 } NodeKind;
 
 typedef enum {
@@ -87,11 +88,13 @@ struct Node {
   Node *local_var_next;                 // link new token to head
   Node *param_next;                     // link new token to head
   int next_offset_in_block;
-  int argc;                             // for ND_FUNC_CALL, ND_FUNC_DECLARATION
-  int num_parameters;                   // for ND_FUNC_DECLARATION
+  int argc;                             // for ND_FUNC_CALL, ND_FUNC_DEFINITION
+  int num_parameters;                   // for ND_FUNC_DEFINITION
+  Type *ret_type;
 
   // function call
   Node *arg_next;                       // link new token to head
+  Node *func_def;
 
   // variables
   Type *type;  // variable type or return value type
@@ -112,6 +115,7 @@ extern char *user_input;   // whole program
 // TODO(k1832): Replace this with a linked-list
 extern Node *programs[100];
 extern int label_num;
+extern Type *ty_int;
 /*** GLOBAL VARIALBES ***/
 
 void Tokenize();
@@ -122,5 +126,9 @@ void ExitWithError(char *fmt, ...);
 bool StartsWith(char *p, char *possible_suffix);
 bool IsAlnumOrUnderscore(char c);
 
+// type.c
+bool IsTypeToken();
+Type *GetType();
+void AddType(Node *node);
 
 #endif  // JCC_H_

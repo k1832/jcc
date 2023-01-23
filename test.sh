@@ -140,8 +140,7 @@ assert 0 "int is_prime(int n) {if(n<=1) return 0; int i; for(i=2; i*i<=n; i=i+1)
 # accessing address and dereferecing using adress (*, &)
 assert 3 "int main() {int x; int *y; x=3; y=&x; return *y;}"
 assert 10 "int main() {int x; int *y; x=10; y=&x; return *y;}"
-assert 3 "int main() {int x; int y; int *z; x=3; y=5; z=&y+8; return *z;}"
-assert 10 "int main() {int x; int y; int *z; x=10; y=5; z=&y+8; return *z;}"
+assert 10 "int main() {int x; x=10; return *&x;}"
 
 # TODO(k1832): Add tests with both (* or &) and ("++" or "--")
 # Pre increment
@@ -159,5 +158,17 @@ assert 11 "int main() {int a; a=10; a++; return a;}"
 assert 9 "int main() {int a; a=10; a--; return a;}"
 assert 110 "int main() {int a; int b; a=10; b=a++; return a*b;}"
 assert 90 "int main() {int a; int b; a=10; b=a--; return a*b;}"
+
+# [Pointer] Referencing and dereferencing values
+# [Pointer] Arithmetic operations on addresses & multi-layered dereferencing
+assert 3 "int main() {int x; int *y; x=3; y=&x; return *y;}"
+assert 10 "int main() {int x; int *y; x=10; y=&x; return *y;}"
+assert 10 "int main() {int x; x=10; return *&x;}"
+assert 5 "int main() {int a; int b; a=10; b=5; return *(&a+1);}"
+assert 10 "int main() {int a; int b; a=10; b=5; return *(&b-1);}"
+assert 10 "int main() {int a; int b; a=10; b=5; return *(&b+(1-2));}"
+assert 10 "int main() {int a; int *b; int **c; a=10; b=&a; c=&b; return **c;}"
+assert 5 "int main() {int a; int *b; a=10; b=&a; *b=5; return a;}"
+assert 12 "int main() {int a; int b; int c; b=10; c=15; *(&a+2)=12; return c;}"
 
 echo OK

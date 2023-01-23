@@ -11,6 +11,20 @@ const char registers[6][4] = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
 static void PrintAssemblyForLeftVar(Node *node) {
   printf("  # %s (%s): at line %d\n", __FILE__, __func__, __LINE__);
 
+  if (node->kind == ND_DEREF) {
+    /*
+     * E.g.
+     * int a; int *tmp;
+     * tmp = &a;
+     * tmp = 10; // This assignment
+     *
+     * The address of "a" is stored in "tmp" as a value
+     * in the example above
+     */
+    PrintAssembly(node->lhs);
+    return;
+  }
+
   if (node->kind != ND_LVAR) {
     ExitWithError("Left-hand-side of an assignment is not a variable.");
   }
@@ -36,25 +50,26 @@ void PrintAssembly(Node *node) {
   if (node->kind == ND_LVAR) {
     printf("  # %s (%s): at line %d\n", __FILE__, __func__, __LINE__);
     PrintAssemblyForLeftVar(node);
+    printf("  # %s (%s): at line %d\n", __FILE__, __func__, __LINE__);
     printf("  pop rax\n");
     printf("  mov rdi, [rax]\n");
     printf("  push rdi\n");
 
-    if (!node->post_increment && !node->post_decrement) {
-      return;
-    }
+    // if (!node->post_increment && !node->post_decrement) {
+    //   return;
+    // }
 
-    // Increment or decrement after original value is pushed to stack
-    if (node->post_increment && node->post_decrement) {
-      ExitWithError(
-        "Both post increment & decrement cannot happen at the same time.");
-    }
-    if (node->post_increment) {
-      printf("  add rdi, 1\n");
-    } else if (node->post_decrement) {
-      printf("  sub rdi, 1\n");
-    }
-    printf("  mov [rax], rdi\n");
+    // // Increment or decrement after original value is pushed to stack
+    // if (node->post_increment && node->post_decrement) {
+    //   ExitWithError(
+    //     "Both post increment & decrement cannot happen at the same time.");
+    // }
+    // if (node->post_increment) {
+    //   printf("  add rdi, 1\n");
+    // } else if (node->post_decrement) {
+    //   printf("  sub rdi, 1\n");
+    // }
+    // printf("  mov [rax], rdi\n");
     return;
   }
 
@@ -267,6 +282,16 @@ void PrintAssembly(Node *node) {
     printf("  sub rdi, 1\n");
     printf("  mov [rax], rdi\n");
     printf("  push rdi\n");
+    return;
+  }
+
+  // "Expression A, Expression B"
+  // Both expressions are evaluated.
+  // And the value of this is Expression B
+  if (node->kind == ND_COMMA) {
+    PrintAssembly(node->lhs);
+    printf("  pop rax\n");
+    PrintAssembly(node->rhs);
     return;
   }
 
