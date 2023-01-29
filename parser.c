@@ -479,13 +479,63 @@ static Node *Expression() {
   return Assignment();
 }
 
-// Assignment     = Equality ("=" Assignment)?
+// Convert `lhs op= rhs` to `tmp = &lhs, *tmp = *tmp op rhs`
+static Node *ToAssign(NodeKind op_type, Node *lhs, Node *rhs) {
+  AddType(lhs);
+  AddType(rhs);
+
+  Type *ty_pointer_to_lhs = calloc(1, sizeof(Type));
+  ty_pointer_to_lhs->kind = TY_PTR;
+  ty_pointer_to_lhs->point_to = lhs->type;
+
+  // tmp
+  Node *pointer_to_lhs = NewLVar(nd_func_being_defined,
+                                 NULL, ty_pointer_to_lhs);
+
+  Node *expr1 = NewBinary(ND_ASSIGN, pointer_to_lhs, NewUnary(ND_ADDR, lhs));
+
+  Node *expr2 =
+    NewBinary(ND_ASSIGN,
+               NewUnary(ND_DEREF, pointer_to_lhs),
+               NewBinary(op_type,
+                          NewUnary(ND_DEREF, pointer_to_lhs),
+                          rhs));
+
+
+  return NewBinary(ND_COMMA, expr1, expr2);
+}
+
+/*
+ * Assignment =
+ *  Equality "=" Assignment |
+ *  Equality "+=" Assignment |
+ *  Equality "-=" Assignment |
+ *  Equality "*=" Assignment |
+ *  Equality "/=" Assignment |
+ *  Equality "%=" Assignment |
+ *  Equality
+ */
 static Node *Assignment() {
-  Node *node = Equality();
-  if (ConsumeIfReservedTokenMatches("=")) {
-    return NewBinary(ND_ASSIGN, node, Assignment());
-  }
-  return node;
+  Node *equality = Equality();
+  if (ConsumeIfReservedTokenMatches("="))
+    return NewBinary(ND_ASSIGN, equality, Assignment());
+
+  if (ConsumeIfReservedTokenMatches("+="))
+    return ToAssign(ND_ADD, equality, Assignment());
+
+  if (ConsumeIfReservedTokenMatches("-="))
+    return ToAssign(ND_SUB, equality, Assignment());
+
+  if (ConsumeIfReservedTokenMatches("*="))
+    return ToAssign(ND_MUL, equality, Assignment());
+
+  if (ConsumeIfReservedTokenMatches("/="))
+    return ToAssign(ND_DIV, equality, Assignment());
+
+  if (ConsumeIfReservedTokenMatches("%="))
+    return ToAssign(ND_MOD, equality, Assignment());
+
+  return equality;
 }
 
 // Equality   = Relational ("==" Relational | "!=" Relational)*
@@ -661,32 +711,6 @@ static Node *MulDiv() {
   }
 }
 
-// Convert `lhs op= rhs` to `tmp = &lhs, *tmp = *tmp op rhs`
-static Node *ToAssign(NodeKind op_type, Node *lhs, Node *rhs) {
-  AddType(lhs);
-  AddType(rhs);
-
-  Type *ty_pointer_to_lhs = calloc(1, sizeof(Type));
-  ty_pointer_to_lhs->kind = TY_PTR;
-  ty_pointer_to_lhs->point_to = lhs->type;
-
-  // tmp
-  Node *pointer_to_lhs = NewLVar(nd_func_being_defined,
-                                 NULL, ty_pointer_to_lhs);
-
-  Node *expr1 = NewBinary(ND_ASSIGN, pointer_to_lhs, NewUnary(ND_ADDR, lhs));
-
-  Node *expr2 =
-    NewBinary(ND_ASSIGN,
-               NewUnary(ND_DEREF, pointer_to_lhs),
-               NewBinary(op_type,
-                          NewUnary(ND_DEREF, pointer_to_lhs),
-                          rhs));
-
-
-  return NewBinary(ND_COMMA, expr1, expr2);
-}
-
 /*
  * Unary   =
  *  ("+" | "-") Primary |
@@ -770,10 +794,10 @@ static Node *Unary() {
 
 /*
  * Dereferenceable =
- * "(" Dereferenceable ")" |
- * "*" Add |
- * "&" identifier
-//  * Add |
+ *  "(" Dereferenceable ")" |
+ *  "*" Add |
+ *  "&" identifier
+ *  Add |
  */
 static Node *Dereferenceable() {
   // "(" Dereferenceable ")"

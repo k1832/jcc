@@ -86,7 +86,12 @@ void Tokenize() {
       StartsWith(char_pointer, "<=") ||
       StartsWith(char_pointer, ">=") ||
       StartsWith(char_pointer, "++") ||
-      StartsWith(char_pointer, "--")) {
+      StartsWith(char_pointer, "--") ||
+      StartsWith(char_pointer, "+=") ||
+      StartsWith(char_pointer, "-=") ||
+      StartsWith(char_pointer, "*=") ||
+      StartsWith(char_pointer, "/=") ||
+      StartsWith(char_pointer, "%=")) {
       cur = ConnectAndGetNewToken(TK_RESERVED, cur, char_pointer, 2);
       char_pointer += 2;
       continue;

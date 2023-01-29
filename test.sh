@@ -171,4 +171,13 @@ assert 10 "int main() {int a; int *b; int **c; a=10; b=&a; c=&b; return **c;}"
 assert 5 "int main() {int a; int *b; a=10; b=&a; *b=5; return a;}"
 assert 12 "int main() {int a; int b; int c; b=10; c=15; *(&a+2)=12; return c;}"
 
+# A op= B
+assert 13 "int main() {int x; x=3; x+=10; return x;}"
+assert 13 "int main() {int x; int y; x=3; y=10; x+=y; return x;}"
+assert 10 "int main() {int x; int y; x=3; y=10; x+=y; return y;}"
+assert 13 "int main() {int x; x=23; x-=10; return x;}"
+assert 230 "int main() {int x; x=23; x*=10; return x;}"
+assert 2 "int main() {int x; x=23; x/=10; return x;}"
+assert 3 "int main() {int x; x=23; x%=10; return x;}"
+
 echo OK
