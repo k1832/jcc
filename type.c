@@ -61,8 +61,6 @@ void AddType(Node *node) {
     case ND_NGT:
     case ND_LVAR:
     case ND_NUM:
-    case ND_PRE_INCREMENT:
-    case ND_PRE_DECREMENT:
       node->type = ty_int;
       return;
     case ND_FUNC_CALL:

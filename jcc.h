@@ -55,8 +55,6 @@ typedef enum {
   ND_FUNC_DEFINITION,
   ND_ADDR,
   ND_DEREF,
-  ND_PRE_INCREMENT,
-  ND_PRE_DECREMENT,
   ND_COMMA,   // Expression, Expression
 } NodeKind;
 
@@ -102,9 +100,6 @@ struct Node {
   int var_name_len;
   int val;
   int offset;
-
-  bool post_increment;
-  bool post_decrement;
 };
 /*** AST definition ***/
 
