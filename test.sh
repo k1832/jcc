@@ -180,4 +180,17 @@ assert 230 "int main() {int x; x=23; x*=10; return x;}"
 assert 2 "int main() {int x; x=23; x/=10; return x;}"
 assert 3 "int main() {int x; x=23; x%=10; return x;}"
 
+# sizeof
+assert 4 "int main() {sizeof(1);}"
+assert 4 "int main() {int x; sizeof(x);}"
+assert 4 "int main() {int x; sizeof(x=1);}"
+assert 4 "int main() {int *x; sizeof(*x);}"
+assert 4 "int main() {int *x; sizeof(*x+1);}"
+assert 8 "int main() {int *x; sizeof(x);}"
+assert 8 "int main() {int *x; sizeof(x+1);}"
+assert 8 "int main() {int x; sizeof(&x);}"
+assert 8 "int main() {int **x; sizeof(x);}"
+assert 8 "int main() {int **x; sizeof(*x);}"
+assert 8 "int main() {int x; int y; return sizeof(&x+1);}"
+
 echo OK

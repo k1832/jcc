@@ -27,7 +27,6 @@ Type *PointTo(Type *point_to) {
   return ty;
 }
 
-
 void AddType(Node *node) {
   if (!node || node->type) {
     return;
@@ -84,5 +83,22 @@ void AddType(Node *node) {
      return;
     default:
       return;
+  }
+}
+
+int GetSize(Type *ty) {
+  if (!ty) {
+    ExitWithError("Type is not determined for this node.");
+    return 0;   // To make cpplint happy
+  }
+
+  switch (ty->kind) {
+    case TY_PTR:
+      return 8;
+    case TY_INT:
+      return 4;
+    default:
+      ExitWithError("\"sizeof\" this type is not defined.");
+      return 0;   // To make cpplint happy
   }
 }

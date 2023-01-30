@@ -144,7 +144,7 @@ static Node *GetDeclaredLocal(Node *nd_block, Token *tok) {
   ) {
     if (local->var_name_len != tok->len) continue;
     if (strncmp(local->var_name, tok->str, local->var_name_len)) continue;
-  return local;
+    return local;
   }
   return NULL;
 }
@@ -164,6 +164,7 @@ static Node *NewLVar(Node *nd_func, Token *ident, Type *type) {
   // TODO(k1832): exit when number of local variables exceeds the limit.
   lvar->local_var_next = nd_func->local_var_next;
   lvar->offset = nd_func->next_offset_in_block;
+  // TODO(k1832): Use GetSize for calculating offset?
   nd_func->next_offset_in_block += 8;
   nd_func->local_var_next = lvar;
   return lvar;
@@ -180,6 +181,7 @@ static Node *GetLvarNodeFromIdent(Token *ident) {
     return NULL;
   }
   lvar->offset = local->offset;
+  lvar->type = local->type;
   return lvar;
 }
 /*** local variable ***/
@@ -713,6 +715,7 @@ static Node *MulDiv() {
 
 /*
  * Unary   =
+ *  "sizeof" Unary |
  *  ("+" | "-") Primary |
  *  "*" Dereferenceable |
  *  "&" identifier |
@@ -721,6 +724,12 @@ static Node *MulDiv() {
  *  Primary
  */
 static Node *Unary() {
+  if (ConsumeIfReservedTokenMatches("sizeof")) {
+    Node *node = Unary();
+    AddType(node);
+    return NewNodeNumber(GetSize(node->type));
+  }
+
   if (ConsumeIfReservedTokenMatches("+")) {
     // Just remove "+"
     return Expression();

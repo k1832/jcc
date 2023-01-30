@@ -130,5 +130,6 @@ bool IsAlnumOrUnderscore(char c);
 bool IsTypeToken();
 Type *GetType();
 void AddType(Node *node);
+int GetSize(Type *ty);
 
 #endif  // JCC_H_

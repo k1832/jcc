@@ -39,6 +39,13 @@ void Tokenize() {
       continue;
     }
 
+    if (StartsWith(char_pointer, "sizeof") &&
+      !IsAlnumOrUnderscore(char_pointer[6])) {
+      cur = ConnectAndGetNewToken(TK_RESERVED, cur, char_pointer, 6);
+      char_pointer += 6;
+      continue;
+    }
+
     if (StartsWith(char_pointer, "return") &&
       !IsAlnumOrUnderscore(char_pointer[6])) {
       cur = ConnectAndGetNewToken(TK_RETURN, cur, char_pointer, 6);
