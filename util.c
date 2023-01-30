@@ -30,8 +30,8 @@ void ExitWithError(char *fmt, ...) {
 }
 /*** error ***/
 
-bool StartsWith(char *p, char *possible_suffix) {
-  return !memcmp(p, possible_suffix, strlen(possible_suffix));
+bool StartsWith(char *p, char *possible_prefix) {
+  return !memcmp(p, possible_prefix, strlen(possible_prefix));
 }
 
 bool IsAlnumOrUnderscore(char c) {
