@@ -5,6 +5,8 @@
 #ifndef JCC_H_
 #define JCC_H_
 
+#define DBGPRNT printf("  # %s:%d (%s)\n", __FILE__, __LINE__, __func__)
+
 /*** Token definition ***/
 typedef enum {
   TK_RESERVED,

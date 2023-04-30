@@ -5,11 +5,11 @@
 
 int label_num = 0;
 const int label_digit = 5;
-const char registers[6][4] = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
+static const char registers[6][4] = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
 
 // Push the ADDRESS of node only if node is left-value.
 static void PrintAssemblyForLeftVar(Node *node) {
-  printf("  # %s (%s): at line %d\n", __FILE__, __func__, __LINE__);
+  DBGPRNT;
 
   if (node->kind == ND_DEREF) {
     /*
@@ -42,15 +42,15 @@ void PrintAssembly(Node *node) {
 
   // TODO(k1832): Use Switch-case
   if (node->kind == ND_NUM) {
-    printf("  # %s (%s): at line %d\n", __FILE__, __func__, __LINE__);
+    DBGPRNT;
     printf("  push %d\n", node->val);
     return;
   }
 
   if (node->kind == ND_LVAR) {
-    printf("  # %s (%s): at line %d\n", __FILE__, __func__, __LINE__);
+    DBGPRNT;
     PrintAssemblyForLeftVar(node);
-    printf("  # %s (%s): at line %d\n", __FILE__, __func__, __LINE__);
+    DBGPRNT;
     printf("  pop rax\n");
     printf("  mov rdi, [rax]\n");
     printf("  push rdi\n");
@@ -75,7 +75,7 @@ void PrintAssembly(Node *node) {
 
   if (node->kind == ND_ASSIGN) {
     // Assign right to left and push right value to the stack.
-    printf("  # %s (%s): at line %d\n", __FILE__, __func__, __LINE__);
+    DBGPRNT;
     PrintAssemblyForLeftVar(node->lhs);
     PrintAssembly(node->rhs);
     printf("  pop rdi\n");
@@ -86,7 +86,7 @@ void PrintAssembly(Node *node) {
   }
 
   if (node->kind == ND_RETURN) {
-    printf("  # %s (%s): at line %d\n", __FILE__, __func__, __LINE__);
+    DBGPRNT;
     PrintAssembly(node->lhs);
     printf("  pop rax\n");
     printf("  mov rsp, rbp\n");
@@ -96,7 +96,7 @@ void PrintAssembly(Node *node) {
     return;
   }
   if (node->kind == ND_IF) {
-    printf("  # %s (%s): at line %d\n", __FILE__, __func__, __LINE__);
+    DBGPRNT;
     int label_for_else_statement = label_num++;
     int label_for_if_end = label_num++;
     PrintAssembly(node->condition);
@@ -118,7 +118,7 @@ void PrintAssembly(Node *node) {
   }
 
   if (node->kind == ND_WHILE) {
-    printf("  # %s (%s): at line %d\n", __FILE__, __func__, __LINE__);
+    DBGPRNT;
     int label_for_while_start = label_num++;
     int label_for_while_end = label_num++;
     printf(".L%0*d:\n", label_digit, label_for_while_start);
@@ -136,7 +136,7 @@ void PrintAssembly(Node *node) {
   }
 
   if (node->kind == ND_FOR) {
-    printf("  # %s (%s): at line %d\n", __FILE__, __func__, __LINE__);
+    DBGPRNT;
     int label_for_for_start = label_num++;
     int label_for_for_end = label_num++;
     if (node->initialization) {
@@ -164,7 +164,7 @@ void PrintAssembly(Node *node) {
   }
 
   if (node->kind == ND_BLOCK) {
-    printf("  # %s (%s): at line %d\n", __FILE__, __func__, __LINE__);
+    DBGPRNT;
     node = node->next_in_block;
     while (node) {
       PrintAssembly(node);
@@ -175,7 +175,7 @@ void PrintAssembly(Node *node) {
   }
 
   if (node->kind == ND_FUNC_CALL) {
-    printf("  # %s (%s): at line %d\n", __FILE__, __func__, __LINE__);
+    DBGPRNT;
 
     // Push arguments after the first 6 arguments
     // reversely to stack
@@ -203,7 +203,7 @@ void PrintAssembly(Node *node) {
   }
 
   if (node->kind == ND_FUNC_DEFINITION) {
-    printf("  # %s (%s): at line %d\n", __FILE__, __func__, __LINE__);
+    DBGPRNT;
     printf("%.*s:\n", node->func_name_len, node->func_name);
     // prologue
     printf("  push rbp\n");
@@ -247,13 +247,13 @@ void PrintAssembly(Node *node) {
   }
 
   if (node->kind == ND_ADDR) {
-    printf("  # %s (%s): at line %d\n", __FILE__, __func__, __LINE__);
+    DBGPRNT;
     PrintAssemblyForLeftVar(node->lhs);
     return;
   }
 
   if (node->kind == ND_DEREF) {
-    printf("  # %s (%s): at line %d\n", __FILE__, __func__, __LINE__);
+    DBGPRNT;
     PrintAssembly(node->lhs);
     printf("  pop rax\n");
     printf("  mov rax, [rax]\n");
@@ -279,44 +279,44 @@ void PrintAssembly(Node *node) {
 
   switch (node->kind) {
     case ND_ADD:
-      printf("  # %s (%s): at line %d\n", __FILE__, __func__, __LINE__);
+      DBGPRNT;
       printf("  add rax, rdi\n");
       break;
     case ND_SUB:
-      printf("  # %s (%s): at line %d\n", __FILE__, __func__, __LINE__);
+      DBGPRNT;
       printf("  sub rax, rdi\n");
       break;
     case ND_MUL:
-      printf("  # %s (%s): at line %d\n", __FILE__, __func__, __LINE__);
+      DBGPRNT;
       printf("  imul rax, rdi\n");
       break;
     case ND_DIV:
-      printf("  # %s (%s): at line %d\n", __FILE__, __func__, __LINE__);
+      DBGPRNT;
       printf("  cqo\n");
       printf("  idiv rdi\n");
       break;
     case ND_MOD:
-      printf("  # %s (%s): at line %d\n", __FILE__, __func__, __LINE__);
+      DBGPRNT;
       printf("  cqo\n");
       printf("  idiv rdi\n");
       printf("  mov rax, rdx\n");
       break;
     case ND_EQ:
-      printf("  # %s (%s): at line %d\n", __FILE__, __func__, __LINE__);
+      DBGPRNT;
       printf("  cmp rax, rdi\n");
       printf("  sete al\n");  // al is the bottom 8 bits of rax
       printf("  movzb rax, al\n");  // zero-fill top 56 bits
       break;
     case ND_LT:
       // rax < rdi
-      printf("  # %s (%s): at line %d\n", __FILE__, __func__, __LINE__);
+      DBGPRNT;
       printf("  cmp rax, rdi\n");
       printf("  setl al\n");
       printf("  movzb rax, al\n");
       break;
     case ND_NGT:
       // rax <= rdi
-      printf("  # %s (%s): at line %d\n", __FILE__, __func__, __LINE__);
+      DBGPRNT;
       printf("  cmp rax, rdi\n");
       printf("  setle al\n");
       printf("  movzb rax, al\n");
