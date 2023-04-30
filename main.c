@@ -19,8 +19,13 @@ int main(int argc, char **argv) {
 
   for (int i = 0; programs[i]; ++i) {
     printf("  # programs[%d] starts.\n", i);
-    PrintAssembly(programs[i]);
-    printf("  pop rax\n");
+    if (PrintAssembly(programs[i])) {
+      /*
+       * "pop" if there is any remaining value at the top
+       * to prevent stack overflow
+       */
+      printf("  pop rax\n");
+    }
   }
 
   return 0;

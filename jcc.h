@@ -1,4 +1,5 @@
 /* Copyright 2021 Keita Morisaki. All rights reserved. */
+#include <stdio.h>
 #include <stdbool.h>
 
 // read this header only once
@@ -45,7 +46,8 @@ typedef enum {
   ND_NEQ,
   ND_LT,
   ND_NGT,
-  ND_LVAR,  // local variable
+  ND_LVAR_DCLR,   // just declaration of local variable
+  ND_LVAR,        // usage of local variable
   ND_ASSIGN,
   ND_NUM,
   ND_RETURN,
@@ -63,12 +65,14 @@ typedef enum {
 typedef enum {
   TY_PTR,
   TY_INT,
+  TY_ARRAY,
 } TypeKind;
 
 typedef struct Type Type;
 struct Type {
   TypeKind kind;
   Type *point_to;
+  size_t array_size;
 };
 
 struct Node {
@@ -117,7 +121,7 @@ extern Type *ty_int;
 
 void Tokenize();
 void BuildAST();
-void PrintAssembly(Node *node);
+bool PrintAssembly(Node *node);
 void ExitWithErrorAt(char *input, char *loc, char *fmt, ...);
 void ExitWithError(char *fmt, ...);
 bool StartsWith(char *p, char *possible_suffix);

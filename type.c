@@ -5,7 +5,7 @@
 
 #include "./jcc.h"
 
-Type *ty_int = &(Type){TY_INT}; // NOLINT
+Type *ty_int = &(Type){TY_INT};   // NOLINT(readability/braces)
 
 bool IsTypeToken() {
   switch (token->kind) {

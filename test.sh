@@ -193,4 +193,21 @@ assert 8 "int main() {int **x; sizeof(x);}"
 assert 8 "int main() {int **x; sizeof(*x);}"
 assert 8 "int main() {int x; int y; return sizeof(&x+1);}"
 
+assert 10 "int main() {int a[2]; *a = 10; *(a + 1) = 20; int *p; p = a; return *p;}"
+assert 15 "int main() {int a[2]; *a = 10; *(a + 1) = 20; int *p; p = a; return *p + 5;}"
+assert 20 "int main() {int a[2]; *a = 10; *(a + 1) = 20; int *p; p = a; return *(p+1);}"
+assert 30 "int main() {int a[2]; *a = 10; *(a + 1) = 20; int *p; p = a; return *p + *(p + 1);}"
+
+assert 10 "int main() {int a[3]; a[0] = 10; a[1] = 20; a[2] = 30; return a[0];}"
+assert 10 "int main() {int a[3]; a[0] = 10; a[1] = 20; a[2] = 30; return *a;}"
+assert 10 "int main() {int a[3]; a[0] = 10; a[1] = 20; a[2] = 30; return *(a);}"
+assert 20 "int main() {int a[3]; a[0] = 10; a[1] = 20; a[2] = 30; return a[1];}"
+assert 20 "int main() {int a[3]; a[0] = 10; a[1] = 20; a[2] = 30; return *(a+1);}"
+assert 30 "int main() {int a[3]; a[0] = 10; a[1] = 20; a[2] = 30; return a[2];}"
+assert 30 "int main() {int a[3]; a[0] = 10; a[1] = 20; a[2] = 30; return *(a+2);}"
+
+assert 10 "int main() {int a[2]; int *b; a[0] = 10; a[1] = 20; b=&a[1]; return *(b-1);}"
+assert 20 "int main() {int a[2]; int *b; a[0] = 10; a[1] = 20; b=&a[1]; return *b;}"
+assert 15 "int main() {int a[2]; int *b; a[0] = 10; a[1] = 20; b=&a[1]; return *b-5;}"
+
 echo OK

@@ -115,7 +115,7 @@ void Tokenize() {
       continue;
     }
 
-    if (strchr(";=+-*/()><{},%&", *char_pointer)) {
+    if (strchr(";=+-*/()><{}[],%&", *char_pointer)) {
       cur = ConnectAndGetNewToken(TK_RESERVED, cur, char_pointer++, 1);
       continue;
     }

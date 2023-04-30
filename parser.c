@@ -149,40 +149,76 @@ static Node *GetDeclaredLocal(Node *nd_block, Token *tok) {
   return NULL;
 }
 
-static Node *NewLVar(Node *nd_func, Token *ident, Type *type) {
-  Node *lvar = NewNode(ND_LVAR);
+/*
+ * Declares new local variable. `array_size` is used
+ * only when the `type` is `TY_ARRAY`
+ */
+static Node *NewLVal(Node *nd_func,
+                     Token *ident,
+                     Type *type,
+                     size_t array_size) {
+  Node *lval = NewNode(ND_LVAR_DCLR);
+
+  /*
+   * When ident is NULL, it's a temporary variable
+   * and ident->str and ident->len will be useless
+   */
   if (ident) {
-    // Temporary variable
-    lvar->var_name = ident->str;
-    lvar->var_name_len = ident->len;
+    lval->var_name = ident->str;
+    lval->var_name_len = ident->len;
   }
-  lvar->type = type;
+
+  lval->type = type;
+  if (lval->type->kind == TY_ARRAY) {
+    lval->type->array_size = array_size;
+  }
+
   if (!nd_func->local_var_next) {
     // First variable
     nd_func->next_offset_in_block = 8;
   }
   // TODO(k1832): exit when number of local variables exceeds the limit.
-  lvar->local_var_next = nd_func->local_var_next;
-  lvar->offset = nd_func->next_offset_in_block;
+  lval->local_var_next = nd_func->local_var_next;
+  lval->offset = nd_func->next_offset_in_block;
+
+  /*
+   * For an array type variable,
+   * the variable itself stores the address of the first value
+   * of the array.
+   * For example:
+   *   "int a[3]; a[0]=-1; a[1]=-1;"
+   * Memory for the example will be placed like below.
+   * addr:   0 1   2
+   * value: [0 -1, -1]
+   */
   // TODO(k1832): Use GetSize for calculating offset?
-  nd_func->next_offset_in_block += 8;
-  nd_func->local_var_next = lvar;
-  return lvar;
+  nd_func->next_offset_in_block += 8;   // Memory for the variable
+  if (type->kind == TY_ARRAY) {
+    // Offset for array elements
+    nd_func->next_offset_in_block += 8 * array_size;
+  }
+
+  nd_func->local_var_next = lval;
+  return lval;
 }
 
 /*
- * Gets lvar node and set offset for it,
+ * Gets lval node from identifier and set offset for it,
  * then returns the node
  */
-static Node *GetLvarNodeFromIdent(Token *ident) {
-  Node *lvar = NewNode(ND_LVAR);
+static Node *GetLValNodeFromIdent(Token *ident) {
+  Node *lval = NewNode(ND_LVAR);
   Node *local = GetDeclaredLocal(nd_func_being_defined, ident);
   if (!local) {
     return NULL;
   }
-  lvar->offset = local->offset;
-  lvar->type = local->type;
-  return lvar;
+
+  lval->var_name_len = local->var_name_len;
+  lval->var_name = local->var_name;
+
+  lval->offset = local->offset;
+  lval->type = local->type;
+  return lval;
 }
 /*** local variable ***/
 
@@ -238,7 +274,7 @@ static void NewFuncParam(Node *nd_func, Token *ident, Type *type) {
 
   ++(nd_func->argc);
   ++(nd_func->num_parameters);
-  Node *local = NewLVar(nd_func, ident, type);
+  Node *local = NewLVal(nd_func, ident, type, 0);
 
   if (nd_func->argc > 6) {
     /*
@@ -269,6 +305,7 @@ static void NewArg(Node *nd_func_call, Node *new_arg) {
 
 /*
  * Parses type and returns it.
+ * Note: Returned type's memory is allocated in heap memory
  * [ignored "-Wreturn-type"]:
  *  This function exits when the token is unexpected type.
  */
@@ -311,7 +348,7 @@ static Node *Add();
 static Node *MulDiv();
 static Node *Unary();
 static Node *Dereferenceable();
-static Node *Lvar();
+static Node *LVal();
 static Node *Primary();
 
 // Store StatementOrExpr into programs
@@ -327,6 +364,7 @@ void BuildAST() {
 
 /*
  * TODO(k1832): Declaration of multiple variables
+ * TODO(k1832): Accept Expression as array size
  *
  * StatementOrExpr =
  *  "return" Expression ";" |
@@ -335,7 +373,7 @@ void BuildAST() {
  *  "for" "(" Expression? ";" Expression? ";" Expression? ")" StatementOrExpr |
  *  "{" StatementOrExpr* "}" |
  *  Expression ";" |
- *  "int" "*"* identifier ";" |
+ *  "int" "*"* identifier ("[" number "]")? ";" |
  *
  *  "int" "*"* identifier "(" ( "int" "*"* identifier ("," "int" "*"* identifier )? ")" "{"
  *    StatementOrExpr*
@@ -410,10 +448,39 @@ static Node *StatementOrExpr() {
     return node;
   }
 
-  // "int" "*"* identifier ";"
+  // "int" "*"* identifier ("[" number "]")? ";"
   Type *ret_or_var_type = GetType();
 
   Token *variable_or_func_name = ExpectIdentifier();
+  if (ConsumeIfReservedTokenMatches("[")) {
+    size_t array_size = (size_t)ExpectNumber();
+
+    // local variable
+    Node *local =
+      GetDeclaredLocal(nd_func_being_defined, variable_or_func_name);
+
+    if (local) {
+      ExitWithErrorAt(user_input, variable_or_func_name->str,
+        "Redeclaration of \"%.*s\"",
+        variable_or_func_name->len,
+        variable_or_func_name->str);
+    }
+    Type *curr_ty = ret_or_var_type;
+
+    // NOLINTNEXTLINE(readability/braces)
+    // Type *array_type = &(Type){TY_ARRAY, curr_ty};
+
+    Type *array_type = calloc(1, sizeof(Type));
+    array_type->kind = TY_ARRAY;
+    array_type->point_to = curr_ty;
+
+    Node *node = NewLVal(nd_func_being_defined,
+                         variable_or_func_name,
+                         array_type, array_size);
+    Expect("]");
+    Expect(";");
+    return node;
+  }
 
   if (ConsumeIfReservedTokenMatches(";")) {
     // local variable
@@ -427,9 +494,9 @@ static Node *StatementOrExpr() {
         variable_or_func_name->str);
     }
 
-    return NewLVar(nd_func_being_defined,
+    return NewLVal(nd_func_being_defined,
                    variable_or_func_name,
-                   ret_or_var_type);
+                   ret_or_var_type, 0);
   }
 
   /*
@@ -491,16 +558,32 @@ static Node *ToAssign(NodeKind op_type, Node *lhs, Node *rhs) {
   ty_pointer_to_lhs->point_to = lhs->type;
 
   // tmp
-  Node *pointer_to_lhs = NewLVar(nd_func_being_defined,
-                                 NULL, ty_pointer_to_lhs);
+  Node *tmp = NewLVal(nd_func_being_defined,
+                                 NULL, ty_pointer_to_lhs, 0);
 
-  Node *expr1 = NewBinary(ND_ASSIGN, pointer_to_lhs, NewUnary(ND_ADDR, lhs));
+  /*
+   * `tmp->kind` is `ND_LVAR_DCLR` here.
+   * For other use cases of `ND_LVAR_DCLR`,
+   * every time the variable is used, a new node
+   * is created as the `ND_LVAR` type
+   * by calling `GetLValNodeFromIdent`.
+   * However, temporary variable does not have its name
+   * and the node cannot be made in the same way.
+   * Also, since the temporary variable is used only once,
+   * the `tmp` node is explicitly changed to the `ND_LVAR` node
+   * here.
+   */
+  tmp->kind = ND_LVAR;
 
+  // tmp = &lhs
+  Node *expr1 = NewBinary(ND_ASSIGN, tmp, NewUnary(ND_ADDR, lhs));
+
+  // *tmp = *tmp op rhs
   Node *expr2 =
     NewBinary(ND_ASSIGN,
-               NewUnary(ND_DEREF, pointer_to_lhs),
+               NewUnary(ND_DEREF, tmp),
                NewBinary(op_type,
-                          NewUnary(ND_DEREF, pointer_to_lhs),
+                          NewUnary(ND_DEREF, tmp),
                           rhs));
 
 
@@ -588,6 +671,12 @@ static Node *Relational() {
   }
 }
 
+// Return true iff the type is pointer or array
+static bool IsPointerLike(Type *ty) {
+  if (ty->kind == TY_PTR) return true;
+  return ty->kind == TY_ARRAY;
+}
+
 static Node *NewAdd(Node *lhs, Node *rhs) {
   AddType(lhs);
   AddType(rhs);
@@ -599,13 +688,13 @@ static Node *NewAdd(Node *lhs, Node *rhs) {
     return NewBinary(ND_ADD, lhs, rhs);
   }
 
-  if (lhs->type->kind == TY_PTR && rhs->type->kind == TY_PTR) {
+  if (IsPointerLike(lhs->type) && IsPointerLike(rhs->type)) {
     // TODO(k1832): Add "Token" to each "Node" for better error message
     ExitWithError("Invalid operands.");
   }
 
   // "num + ptr" -> "ptr + num"
-  if (rhs->type->kind == TY_PTR) {
+  if (IsPointerLike(rhs->type)) {
     // swap "lhs" and "rhs"
     Node *tmp = lhs;
     lhs = rhs;
@@ -613,6 +702,7 @@ static Node *NewAdd(Node *lhs, Node *rhs) {
   }
 
   // (ptr + num) -> ptr - (sizeof(*ptr) * num)
+  // TODO(k1832): Replace "8" with sizeof(*ptr)
   rhs = NewBinary(ND_MUL, rhs, NewNodeNumber(8));
   return NewBinary(ND_SUB, lhs, rhs);
 }
@@ -636,7 +726,7 @@ static Node *NewSub(Node *lhs, Node *rhs) {
   }
 
   // ptr - num
-  if (lhs->type->kind == TY_PTR && rhs->type->kind == TY_INT) {
+  if (IsPointerLike(lhs->type) && rhs->type->kind == TY_INT) {
     // "ptr - num" -> "ptr + sizeof(*ptr) * num"
     rhs = NewBinary(ND_MUL, rhs, NewNodeNumber(8));
     Node *node = NewBinary(ND_ADD, lhs, rhs);
@@ -718,9 +808,9 @@ static Node *MulDiv() {
  *  "sizeof" Unary |
  *  ("+" | "-") Primary |
  *  "*" Dereferenceable |
- *  "&" identifier |
- *  ("++" | "--") Lvar |
- *  Lvar ("++" | "--")? |
+ *  "&" LVal |
+ *  ("++" | "--") LVal |
+ *  LVal ("++" | "--")? |
  *  Primary
  */
 static Node *Unary() {
@@ -742,81 +832,54 @@ static Node *Unary() {
 
   if (ConsumeIfReservedTokenMatches("++")) {
     // "++i" -> "i += 1"
-    return ToAssign(ND_ADD, Lvar(), NewNodeNumber(1));
+    return ToAssign(ND_ADD, LVal(), NewNodeNumber(1));
   }
 
   if (ConsumeIfReservedTokenMatches("--")) {
     // "--i" -> "i -= 1"
-    return ToAssign(ND_SUB, Lvar(), NewNodeNumber(1));
+    return ToAssign(ND_SUB, LVal(), NewNodeNumber(1));
   }
 
   if (ConsumeIfReservedTokenMatches("*")) {
     return NewUnary(ND_DEREF, Dereferenceable());
   }
 
-  // "&" identifier
+  // "&" LVal
   if (ConsumeIfReservedTokenMatches("&")) {
-    Token *ident = ExpectIdentifier();
-    Node *lvar = GetLvarNodeFromIdent(ident);
-    if (!lvar) {
-      ExitWithErrorAt(user_input, ident->str, "Undeclared variable");
-    }
-    return NewUnary(ND_ADDR, lvar);
+    return NewUnary(ND_ADDR, LVal());
   }
 
-  Token *stashed_token = token;
-  Node *lvar = Lvar();
-  if (!lvar) {
-    // Primary
-    Node *node = Primary();
-    if (node) return node;
+  Node *lval = LVal();
 
-    ExitWithErrorAt(user_input, token->str, "Unexpected token.");
-    return NULL;  // To make cpplint happy
+  if (!lval) {
+    return Primary();
   }
 
-  // Lvar ("++" | "--") |
+  // LVal ("++" | "--") |
   if (ConsumeIfReservedTokenMatches("++")) {
     // "i++" -> "(i+=1) - 1"
     return NewBinary(ND_SUB,
-                      ToAssign(ND_ADD, lvar, NewNodeNumber(1)),
+                      ToAssign(ND_ADD, lval, NewNodeNumber(1)),
                       NewNodeNumber(1));
   }
   if (ConsumeIfReservedTokenMatches("--")) {
     // "i--" -> "(i-=1) + 1"
     return NewBinary(ND_ADD,
-                      ToAssign(ND_SUB, lvar, NewNodeNumber(1)),
+                      ToAssign(ND_SUB, lval, NewNodeNumber(1)),
                       NewNodeNumber(1));
   }
 
-  token = stashed_token;
-
-  Node *node = Primary();
-  if (node) return node;
-
-  node = Lvar();
-  if (node) return node;
-
-  ExitWithErrorAt(user_input, token->str, "Unexpected token.");
-  return NULL;  // To make cpplint happy
+  return lval;
 }
 
 /*
  * Dereferenceable =
- *  "(" Dereferenceable ")" |
- *  "*" Add |
- *  "&" identifier
- *  Add |
+ *  "*" Dereferenceable |
+ *  "&" Lval |
+ *  "(" Expression ")" |
+ *  Lval
  */
 static Node *Dereferenceable() {
-  // "(" Dereferenceable ")"
-  // if (ConsumeIfReservedTokenMatches("(")) {
-  //   // Node *nd = Dereferenceable();
-  //   Node *nd = Add();
-  //   Expect(")");
-  //   return nd;
-  // }
-
   // "*" Dereferenceable
   if (ConsumeIfReservedTokenMatches("*")) {
     return NewUnary(ND_DEREF, Dereferenceable());
@@ -825,22 +888,35 @@ static Node *Dereferenceable() {
   // "&" identifier
   if (ConsumeIfReservedTokenMatches("&")) {
     Token *ident = ExpectIdentifier();
-    Node *lvar = GetLvarNodeFromIdent(ident);
-    if (!lvar) {
+    Node *lval = GetLValNodeFromIdent(ident);
+    if (!lval) {
       ExitWithErrorAt(user_input, ident->str, "Undeclared variable");
     }
-    return NewUnary(ND_ADDR, lvar);
+    return NewUnary(ND_ADDR, lval);
   }
 
-  return Add();
+  if (ConsumeIfReservedTokenMatches("(")) {
+    Node *expression = Expression();
+    Expect(")");
+    return expression;
+  }
+
+  Token *ident = ExpectIdentifier();
+  Node *lval = GetLValNodeFromIdent(ident);
+  if (!lval) {
+    ExitWithErrorAt(user_input, ident->str, "Undeclared variable");
+  }
+
+  return lval;
 }
 
 /*
- * Lvar =
+ * Could return NULL
+ * LVal =
  *  "*" Dereferenceable |
- *  identifier
+ *  identifier ("[" number "]")?
  */
-static Node *Lvar() {
+static Node *LVal() {
   Token *stashed_token = token;
 
   // "*" Dereferenceable |
@@ -850,9 +926,16 @@ static Node *Lvar() {
 
   Token *ident = ConsumeAndGetIfIdent();
   if (ident) {
-    Node *node = GetLvarNodeFromIdent(ident);
-    if (node) {
-      return node;
+    Node *nd_lval = GetLValNodeFromIdent(ident);
+    if (nd_lval) {
+      if (ConsumeIfReservedTokenMatches("[")) {
+        int index = ExpectNumber();
+        Expect("]");
+
+        // ptr[index] -> *(ptr + index)
+        return NewUnary(ND_DEREF, NewAdd(nd_lval, NewNodeNumber(index)));
+      }
+      return nd_lval;
     }
   }
 
@@ -866,7 +949,7 @@ static Node *Lvar() {
  * Primary =
  *  "(" Expression ")" |
  *  identifier "(" ( Expression ("," Expression)* )? ")" ) |
- *  Lvar
+ *  LVal
  *  number
  */
 static Node *Primary() {
@@ -919,7 +1002,7 @@ static Node *Primary() {
     token = stashed_token;
   }
 
-  Node *node = Lvar();
+  Node *node = LVal();
   if (node) return node;
 
   if (IsNextTokenNumber()) {

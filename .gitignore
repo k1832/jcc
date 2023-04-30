@@ -5,3 +5,4 @@ a.out
 jcc
 
 .clangd/
+.cache/

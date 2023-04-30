@@ -7,82 +7,119 @@ int label_num = 0;
 const int label_digit = 5;
 static const char registers[6][4] = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
 
-// Push the ADDRESS of node only if node is left-value.
-static void PrintAssemblyForLeftVar(Node *node) {
+static bool IsDereferenceable(Node *node) {
+  return node->kind == ND_DEREF || node->kind == ND_LVAR;
+}
+
+// TODO(k1832): Reconsider if the comment is accurate
+// Push the ADDRESS of node only iff the node is left-valued
+static void PrintAssemblyForLeftVal(Node *node) {
   DBGPRNT;
+
+  if (!IsDereferenceable(node)) {
+    ExitWithError("Failed to parse the node as a left-hand-side.\n");
+    return;
+  }
 
   if (node->kind == ND_DEREF) {
     /*
+     * int *a, b;
+     * a = &b;
+     * *a = 10;
+     *
+     * In the example above, the value `10` will be stored
+     * at the address that the `a` points to.
+     * So this function should prints the assembly that
+     * push the value that `a` holds.
+     */
+    AddType(node->lhs);
+
+    if (!IsDereferenceable(node->lhs)) {
+      PrintAssembly(node->lhs);
+      return;
+    }
+
+    if (node->lhs->type->kind == TY_ARRAY) {
+      /*
+       * When an array `a` is declared as `int a[10];`,
+       * `a` is evaluated to the start address of the array,
+       * which is the address of the `a` itself.
+       * So pushing the address of the `a`.
+       */
+      PrintAssemblyForLeftVal(node->lhs);
+      return;
+    }
+
+    /*
+     *
      * E.g.
      * int a; int *tmp;
      * tmp = &a;
-     * tmp = 10; // This assignment
+     * *tmp = 10; // Left val of this assignment
      *
-     * The address of "a" is stored in "tmp" as a value
-     * in the example above
+     * The address of `a` is stored in `tmp` as a value
+     * in the example above. So just pushing the value of `tmp`.
      */
     PrintAssembly(node->lhs);
     return;
   }
 
-  if (node->kind != ND_LVAR) {
-    ExitWithError("Left-hand-side of an assignment is not a variable.");
-  }
-
+  DBGPRNT;
+  // node->kind == ND_LVAR
   printf("  mov rax, rbp\n");
   printf("  sub rax, %d\n", node->offset);
   printf("  push rax\n");
 }
 
-// Push processed result (VALUE) of node.
-void PrintAssembly(Node *node) {
+/*
+ * Prints assembly that processes `node`.
+ * Returns true if a value is pushed to stack at the end.
+ * Otherwise, returns false
+ */
+bool PrintAssembly(Node *node) {
   if (node == NULL) {
     ExitWithError("Can not print assembly for NULL.\n");
+  }
+
+  if (node->kind == ND_LVAR_DCLR) {
+    DBGPRNT;
+    return false;
   }
 
   // TODO(k1832): Use Switch-case
   if (node->kind == ND_NUM) {
     DBGPRNT;
     printf("  push %d\n", node->val);
-    return;
+    return true;
   }
 
   if (node->kind == ND_LVAR) {
     DBGPRNT;
-    PrintAssemblyForLeftVar(node);
+    PrintAssemblyForLeftVal(node);
     DBGPRNT;
+
+    if (node->type->kind == TY_ARRAY) {
+      DBGPRNT;
+      return true;
+    }
+
     printf("  pop rax\n");
     printf("  mov rdi, [rax]\n");
     printf("  push rdi\n");
-
-    // if (!node->post_increment && !node->post_decrement) {
-    //   return;
-    // }
-
-    // // Increment or decrement after original value is pushed to stack
-    // if (node->post_increment && node->post_decrement) {
-    //   ExitWithError(
-    //     "Both post increment & decrement cannot happen at the same time.");
-    // }
-    // if (node->post_increment) {
-    //   printf("  add rdi, 1\n");
-    // } else if (node->post_decrement) {
-    //   printf("  sub rdi, 1\n");
-    // }
-    // printf("  mov [rax], rdi\n");
-    return;
+    return true;
   }
 
   if (node->kind == ND_ASSIGN) {
-    // Assign right to left and push right value to the stack.
     DBGPRNT;
-    PrintAssemblyForLeftVar(node->lhs);
+    // Push the address of the left value to the stack
+    PrintAssemblyForLeftVal(node->lhs);
+    // Push the value of the right-hand-side
     PrintAssembly(node->rhs);
     printf("  pop rdi\n");
     printf("  pop rax\n");
     printf("  mov [rax], rdi\n");
     printf("  push rdi\n");
-    return;
+    return true;
   }
 
   if (node->kind == ND_RETURN) {
@@ -93,7 +130,7 @@ void PrintAssembly(Node *node) {
     printf("  pop rbp\n");
     // "ret" pops the address stored at the stack top, and jump there.
     printf("  ret\n");
-    return;
+    return false;
   }
   if (node->kind == ND_IF) {
     DBGPRNT;
@@ -114,7 +151,7 @@ void PrintAssembly(Node *node) {
     }
 
     printf(".L%0*d:\n", label_digit, label_for_if_end);
-    return;
+    return false;
   }
 
   if (node->kind == ND_WHILE) {
@@ -132,7 +169,7 @@ void PrintAssembly(Node *node) {
     printf("  jmp .L%0*d\n", label_digit, label_for_while_start);
 
     printf(".L%0*d:\n", label_digit, label_for_while_end);
-    return;
+    return false;
   }
 
   if (node->kind == ND_FOR) {
@@ -160,18 +197,19 @@ void PrintAssembly(Node *node) {
     printf("  jmp .L%0*d\n", label_digit, label_for_for_start);
 
     printf(".L%0*d:\n", label_digit, label_for_for_end);
-    return;
+    return false;
   }
 
   if (node->kind == ND_BLOCK) {
     DBGPRNT;
     node = node->next_in_block;
     while (node) {
+      printf("  # LINE starts in block\n");
       PrintAssembly(node);
       printf("  pop rax\n");  // pop statement result
       node = node->next_in_block;
     }
-    return;
+    return false;
   }
 
   if (node->kind == ND_FUNC_CALL) {
@@ -199,7 +237,7 @@ void PrintAssembly(Node *node) {
     // TODO(k1832): 16byte allignment?
     printf("  call %.*s\n", node->func_name_len, node->func_name);
     printf("  push rax\n");
-    return;
+    return true;
   }
 
   if (node->kind == ND_FUNC_DEFINITION) {
@@ -234,8 +272,10 @@ void PrintAssembly(Node *node) {
 
     node = node->next_in_block;
     while (node) {
-      PrintAssembly(node);
-      printf("  pop rax\n");
+      printf("  # LINE starts in function\n");
+      if (PrintAssembly(node)) {
+        printf("  pop rax\n");
+      }
       node = node->next_in_block;
     }
     // epilogue
@@ -243,32 +283,35 @@ void PrintAssembly(Node *node) {
     printf("  pop rbp\n");
     // "ret" pops the address stored at the stack top, and jump there.
     printf("  ret\n");
-    return;
+    return false;
   }
 
   if (node->kind == ND_ADDR) {
     DBGPRNT;
-    PrintAssemblyForLeftVar(node->lhs);
-    return;
+    PrintAssemblyForLeftVal(node->lhs);
+    return true;
   }
 
   if (node->kind == ND_DEREF) {
     DBGPRNT;
     PrintAssembly(node->lhs);
+    DBGPRNT;
+
     printf("  pop rax\n");
     printf("  mov rax, [rax]\n");
     printf("  push rax\n");
-    return;
+    return true;
   }
 
   // "Expression A, Expression B"
   // Both expressions are evaluated.
   // And the value of this is Expression B
   if (node->kind == ND_COMMA) {
-    PrintAssembly(node->lhs);
-    printf("  pop rax\n");
-    PrintAssembly(node->rhs);
-    return;
+    if (PrintAssembly(node->lhs)) {
+      printf("  pop rax\n");
+    }
+
+    return PrintAssembly(node->rhs);
   }
 
   PrintAssembly(node->lhs);
@@ -327,4 +370,5 @@ void PrintAssembly(Node *node) {
   }
 
   printf("  push rax\n");
+  return true;
 }
