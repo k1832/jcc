@@ -708,6 +708,9 @@ static Node *NewAdd(Node *lhs, Node *rhs) {
 }
 
 /*
+ * Subtraction between 2 numbers, 1 number and 1 pointer,
+ * or 2 pointers.
+ *
  * [ignored "-Wreturn-type"]:
  *  This program exits in the error function.
  *  No return value is needed after the function.
@@ -748,9 +751,12 @@ static Node *NewSub(Node *lhs, Node *rhs) {
     */
 
     /*
-     * TODO(k1832): Add good explaination why this should be
-     *              "rhs - lhs" but not reversed order.
-     * TODO(k1832): Check if this still works for array
+     * In x86-64 architecture, the stack grows downwards
+     * (i.e., from higher addresses to lower addresses).
+     * When calculating the difference between two pointers,
+     * we reverse the operands (rhs - lhs) to ensure that the resulting
+     * value is positive and correctly represents the number of elements
+     * between the pointers.
      */
     Node *node = NewBinary(ND_SUB, rhs, lhs);
     node->type = ty_int;
