@@ -887,10 +887,9 @@ static Node *Dereferenceable() {
 
   // "&" identifier
   if (ConsumeIfReservedTokenMatches("&")) {
-    Token *ident = ExpectIdentifier();
-    Node *lval = GetLValNodeFromIdent(ident);
+    Node *lval = LVal();
     if (!lval) {
-      ExitWithErrorAt(user_input, ident->str, "Undeclared variable");
+      ExitWithErrorAt(user_input, token->str, "Undeclared variable");
     }
     return NewUnary(ND_ADDR, lval);
   }
@@ -901,17 +900,20 @@ static Node *Dereferenceable() {
     return expression;
   }
 
-  Token *ident = ExpectIdentifier();
-  Node *lval = GetLValNodeFromIdent(ident);
+  Node *lval = LVal();
   if (!lval) {
-    ExitWithErrorAt(user_input, ident->str, "Undeclared variable");
+    ExitWithErrorAt(user_input, token->str, "Undeclared variable");
   }
 
   return lval;
 }
 
 /*
- * Could return NULL
+ * Parses tokens.
+ * Returns LVal node on success, otherwise returns NULL.
+ * Before returning NULL, the token is restored to its state
+ * at the time the function was called.
+ *
  * LVal =
  *  "*" Dereferenceable |
  *  identifier ("[" number "]")?
