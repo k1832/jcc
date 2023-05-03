@@ -916,7 +916,7 @@ static Node *Dereferenceable() {
  *
  * LVal =
  *  "*" Dereferenceable |
- *  identifier ("[" number "]")?
+ *  identifier ("[" Expression "]")?
  */
 static Node *LVal() {
   Token *stashed_token = token;
@@ -931,11 +931,11 @@ static Node *LVal() {
     Node *nd_lval = GetLValNodeFromIdent(ident);
     if (nd_lval) {
       if (ConsumeIfReservedTokenMatches("[")) {
-        int index = ExpectNumber();
+        Node *expression = Expression();
         Expect("]");
 
         // ptr[index] -> *(ptr + index)
-        return NewUnary(ND_DEREF, NewAdd(nd_lval, NewNodeNumber(index)));
+        return NewUnary(ND_DEREF, NewAdd(nd_lval, expression));
       }
       return nd_lval;
     }

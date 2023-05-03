@@ -210,4 +210,8 @@ assert 10 "int main() {int a[2]; int *b; a[0] = 10; a[1] = 20; b=&a[1]; return *
 assert 20 "int main() {int a[2]; int *b; a[0] = 10; a[1] = 20; b=&a[1]; return *b;}"
 assert 15 "int main() {int a[2]; int *b; a[0] = 10; a[1] = 20; b=&a[1]; return *b-5;}"
 
+# Use non-direct value as index
+assert 15 "int main() {int a[3]; int i; a[0] = 3; a[1] = 5; a[2] = 7; for (i = 1; i < 3; ++i) {a[0] += a[i];} return a[0]; }"
+assert 55 "int main() {int a[10]; int i; for (i = 0; i < 10; ++i) {a[i] = i + 1;} int total; total = 0; for (i = 0; i < 10; ++i) {total += a[i];} return total;}"
+
 echo OK
