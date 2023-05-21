@@ -47,6 +47,9 @@ void AddType(Node *node) {
   Type *ty_int = calloc(1, sizeof(Type));
   ty_int->kind = TY_INT;
   switch (node->kind) {
+    case ND_LOCAL_VAR:
+    case ND_GLBL_VAR:
+      return;  // Already have type?
     case ND_ADD:
     case ND_SUB:
     case ND_MUL:
@@ -59,7 +62,6 @@ void AddType(Node *node) {
     case ND_NEQ:
     case ND_LT:
     case ND_NGT:
-    case ND_LVAR:
     case ND_NUM:
       node->type = ty_int;
       return;
@@ -81,22 +83,5 @@ void AddType(Node *node) {
      return;
     default:
       return;
-  }
-}
-
-int GetSize(Type *ty) {
-  if (!ty) {
-    ExitWithError("Type is not determined for this node.");
-    return 0;   // To make cpplint happy
-  }
-
-  switch (ty->kind) {
-    case TY_PTR:
-      return 8;
-    case TY_INT:
-      return 4;
-    default:
-      ExitWithError("\"sizeof\" this type is not defined.");
-      return 0;   // To make cpplint happy
   }
 }

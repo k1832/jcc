@@ -29,7 +29,7 @@ static Token *ConnectAndGetNewToken(
 // They are not necessarily initialized in this function.
 void Tokenize() {
   char *char_pointer = user_input;
-  Token *head;
+  Token *head = calloc(1, sizeof(Token));
   head->next = NULL;
   Token *cur = head;
 

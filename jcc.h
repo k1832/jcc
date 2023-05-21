@@ -46,8 +46,9 @@ typedef enum {
   ND_NEQ,
   ND_LT,
   ND_NGT,
-  ND_LVAR_DCLR,   // just declaration of local variable
-  ND_LVAR,        // usage of local variable
+  ND_VAR_DCLR,    // just declaration of variable
+  ND_LOCAL_VAR,   // usage of local variable
+  ND_GLBL_VAR,    // usage of global variable
   ND_ASSIGN,
   ND_NUM,
   ND_RETURN,
@@ -57,6 +58,8 @@ typedef enum {
   ND_BLOCK,
   ND_FUNC_CALL,
   ND_FUNC_DEFINITION,
+  // Node for holding all the global variables
+  ND_GLOBAL_VAR_LIST,
   ND_ADDR,
   ND_DEREF,
   ND_COMMA,   // Expression, Expression
@@ -89,7 +92,7 @@ struct Node {
   // function
   char *func_name;
   int func_name_len;
-  Node *local_var_next;                 // link new token to head
+  Node *variable_next;                 // link new token to head
   Node *param_next;                     // link new token to head
   int next_offset_in_block;
   int argc;                             // for ND_FUNC_CALL, ND_FUNC_DEFINITION
@@ -115,6 +118,13 @@ extern Token *token;       // token currently processed
 extern char *user_input;   // whole program
 // TODO(k1832): Replace this with a linked-list
 extern Node *programs[100];
+
+/*
+ * `ND_GLOBAL_VARIABLE` node that holds linked-list
+ * of the global variables.
+ * Through entire program, there is only one `ND_GLOBAL_VARIABLE` node
+ */
+extern Node *globals;
 extern int label_num;
 extern Type *ty_int;
 /*** GLOBAL VARIALBES ***/

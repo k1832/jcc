@@ -28,5 +28,22 @@ int main(int argc, char **argv) {
     }
   }
 
+  if (!globals)
+    return 0;
+
+  DBGPRNT;
+  printf("\n");
+  printf(".data\n");
+  for (Node *var = globals->variable_next; var; var=var->variable_next) {
+    printf("%.*s:\n", var->var_name_len, var->var_name);
+
+    // TODO(k1832): Replace with GetSize
+    int size = 8;
+    if (var->type->array_size) {
+      size *= var->type->array_size;
+    }
+    printf("  .zero %d\n", size);
+  }
+
   return 0;
 }

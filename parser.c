@@ -11,7 +11,9 @@
 #define PROGRAM_LEN 100
 
 Node *programs[PROGRAM_LEN];
-Node *nd_func_being_defined;
+Node *current_scope;
+
+Node *globals;
 
 /*** token processor ***/
 // DEBUG
@@ -135,12 +137,34 @@ static Node *NewUnary(NodeKind kind, Node *nd) {
 }
 
 
-/*** local variable ***/
-static Node *GetDeclaredLocal(Node *nd_block, Token *tok) {
+int GetSize(Type *ty) {
+  if (!ty) {
+    ExitWithError("Type is not determined for this node.");
+    return 0;   // To make cpplint happy
+  }
+
+  switch (ty->kind) {
+    case TY_PTR:
+      return 8;
+    case TY_INT:
+      return 4;
+    case TY_ARRAY:
+      return GetSize(ty->point_to) * (int)ty->array_size;
+    default:
+      ExitWithError("\"sizeof\" this type is not defined.");
+      return 0;   // To make cpplint happy
+  }
+}
+
+
+/*** Variable declaration ***/
+static Node *GetDeclaredInScope(Node *scope, Token *tok) {
+  if (!scope) return NULL;
+
   for (
-    Node *local = nd_block->local_var_next;
+    Node *local = scope->variable_next;
     local;
-    local = local->local_var_next
+    local = local->variable_next
   ) {
     if (local->var_name_len != tok->len) continue;
     if (strncmp(local->var_name, tok->str, local->var_name_len)) continue;
@@ -153,11 +177,11 @@ static Node *GetDeclaredLocal(Node *nd_block, Token *tok) {
  * Declares new local variable. `array_size` is used
  * only when the `type` is `TY_ARRAY`
  */
-static Node *NewLVal(Node *nd_func,
+static Node *NewLVal(Node *var_scope,
                      Token *ident,
                      Type *type,
                      size_t array_size) {
-  Node *lval = NewNode(ND_LVAR_DCLR);
+  Node *lval = NewNode(ND_VAR_DCLR);
 
   /*
    * When ident is NULL, it's a temporary variable
@@ -177,15 +201,28 @@ static Node *NewLVal(Node *nd_func,
     lval->type->array_size = array_size;
   }
 
-  if (!nd_func->local_var_next) {
-    // First variable
-    nd_func->next_offset_in_block = 8;
-  }
   // TODO(k1832): exit when number of local variables exceeds the limit.
-  lval->local_var_next = nd_func->local_var_next;
-  lval->offset = nd_func->next_offset_in_block;
+  lval->variable_next = var_scope->variable_next;
+
+  if (var_scope->kind == ND_GLOBAL_VAR_LIST) {
+    // Global variable
+    var_scope->variable_next = lval;
+    return lval;
+  }
+
+  // Function-scope variable
+
+
+  // Following is for handling offset
+
+  if (!var_scope->variable_next) {
+    // First variable
+    var_scope->next_offset_in_block = 8;
+  }
 
   /*
+   * TODO(k1832): Check if this is true
+   *
    * For an array type variable,
    * the variable itself stores the address of the first value
    * of the array.
@@ -196,13 +233,14 @@ static Node *NewLVal(Node *nd_func,
    * value: [0 -1, -1]
    */
   // TODO(k1832): Use GetSize for calculating offset?
-  nd_func->next_offset_in_block += 8;   // Memory for the variable
+  var_scope->next_offset_in_block += 8;   // Memory for the variable
   if (type->kind == TY_ARRAY) {
     // Offset for array elements
-    nd_func->next_offset_in_block += 8 * array_size;
+    var_scope->next_offset_in_block += 8 * array_size;
   }
+  lval->offset = var_scope->next_offset_in_block - 8;
 
-  nd_func->local_var_next = lval;
+  var_scope->variable_next = lval;
   return lval;
 }
 
@@ -210,9 +248,16 @@ static Node *NewLVal(Node *nd_func,
  * Gets lval node from identifier and set offset for it,
  * then returns the node
  */
-static Node *GetLValNodeFromIdent(Token *ident) {
-  Node *lval = NewNode(ND_LVAR);
-  Node *local = GetDeclaredLocal(nd_func_being_defined, ident);
+static Node *GetLValNodeFromIdent(Node *scope, Token *ident) {
+  if (!scope) return NULL;
+
+  NodeKind node_kind = ND_LOCAL_VAR;
+  if (globals && scope == globals) {
+    node_kind = ND_GLBL_VAR;
+  }
+
+  Node *lval = NewNode(node_kind);
+  Node *local = GetDeclaredInScope(scope, ident);
   if (!local) {
     return NULL;
   }
@@ -500,7 +545,7 @@ static Node *Statement() {
   Expect(")");
 
   Expect("{");
-  nd_func_being_defined = nd_func_define;
+  current_scope = nd_func_define;
 
   Node *node_in_block = nd_func_define;
   while (!ConsumeIfReservedTokenMatches("}")) {
@@ -508,7 +553,7 @@ static Node *Statement() {
     node_in_block = node_in_block->next_in_block;
   }
   // Reset the node that's currently being processed function.
-  nd_func_being_defined = NULL;
+  current_scope = NULL;
 
   return nd_func_define;
 }
@@ -553,20 +598,43 @@ static Node *VariableDeclaration() {
     return NULL;
   }
 
-  // local variable
-  Node *local =
-    GetDeclaredLocal(nd_func_being_defined, variable_or_func_name);
+  /*
+   * `current_scope` should be either
+   * `NULL` for global scope, or
+   * not `NULL` for function scope
+   */
+  Node *prev_scope = NULL;
+  if (!current_scope) {
+    // Global variable
+    if (!globals) {
+      // First global variable
+      globals = NewNode(ND_GLOBAL_VAR_LIST);
+    }
 
-  if (local) {
+    prev_scope = current_scope;
+    current_scope = globals;
+  }
+
+  Node *declared_node =
+    GetDeclaredInScope(current_scope, variable_or_func_name);
+
+  if (declared_node) {
     ExitWithErrorAt(user_input, variable_or_func_name->str,
       "Redeclaration of \"%.*s\"",
       variable_or_func_name->len,
       variable_or_func_name->str);
   }
 
-  return NewLVal(nd_func_being_defined,
-                  variable_or_func_name,
-                  type, array_size);
+  Node *lval = NewLVal(current_scope,
+                       variable_or_func_name,
+                       type, array_size);
+
+  if (prev_scope) {
+    // Restore
+    current_scope = prev_scope;
+  }
+
+  return lval;
 }
 
 // Expression     = Assignment
@@ -584,7 +652,7 @@ static Node *ToAssign(NodeKind op_type, Node *lhs, Node *rhs) {
   ty_pointer_to_lhs->point_to = lhs->type;
 
   // tmp
-  Node *tmp = NewLVal(nd_func_being_defined,
+  Node *tmp = NewLVal(current_scope,
                                  NULL, ty_pointer_to_lhs, 0);
 
   /*
@@ -599,7 +667,7 @@ static Node *ToAssign(NodeKind op_type, Node *lhs, Node *rhs) {
    * the `tmp` node is explicitly changed to the `ND_LVAR` node
    * here.
    */
-  tmp->kind = ND_LVAR;
+  tmp->kind = ND_LOCAL_VAR;
 
   // tmp = &lhs
   Node *expr1 = NewBinary(ND_ASSIGN, tmp, NewUnary(ND_ADDR, lhs));
@@ -727,10 +795,10 @@ static Node *NewAdd(Node *lhs, Node *rhs) {
     rhs = tmp;
   }
 
-  // (ptr + num) -> ptr - (sizeof(*ptr) * num)
+  // (ptr + num) -> ptr + (sizeof(*ptr) * num)
   // TODO(k1832): Replace "8" with sizeof(*ptr)
   rhs = NewBinary(ND_MUL, rhs, NewNodeNumber(8));
-  return NewBinary(ND_SUB, lhs, rhs);
+  return NewBinary(ND_ADD, lhs, rhs);
 }
 
 /*
@@ -756,9 +824,9 @@ static Node *NewSub(Node *lhs, Node *rhs) {
 
   // ptr - num
   if (IsPointerLike(lhs->type) && rhs->type->kind == TY_INT) {
-    // "ptr - num" -> "ptr + sizeof(*ptr) * num"
+    // "ptr - num" -> "ptr - sizeof(*ptr) * num"
     rhs = NewBinary(ND_MUL, rhs, NewNodeNumber(8));
-    Node *node = NewBinary(ND_ADD, lhs, rhs);
+    Node *node = NewBinary(ND_SUB, lhs, rhs);
     node->type = lhs->type;
     return node;
   }
@@ -776,15 +844,7 @@ static Node *NewSub(Node *lhs, Node *rhs) {
     * -> This will print "2".
     */
 
-    /*
-     * In x86-64 architecture, the stack grows downwards
-     * (i.e., from higher addresses to lower addresses).
-     * When calculating the difference between two pointers,
-     * we reverse the operands (rhs - lhs) to ensure that the resulting
-     * value is positive and correctly represents the number of elements
-     * between the pointers.
-     */
-    Node *node = NewBinary(ND_SUB, rhs, lhs);
+    Node *node = NewBinary(ND_SUB, lhs, rhs);
     node->type = ty_int;
     return NewBinary(ND_DIV, node, NewNodeNumber(8));
   }
@@ -959,21 +1019,37 @@ static Node *LVal() {
   }
 
   Token *ident = ConsumeAndGetIfIdent();
-  if (ident) {
-    Node *nd_lval = GetLValNodeFromIdent(ident);
-    if (nd_lval) {
-      if (ConsumeIfReservedTokenMatches("[")) {
-        Node *expression = Expression();
-        Expect("]");
+  if (!ident) {
+    token = stashed_token;
+    return NULL;
+  }
 
-        // ptr[index] -> *(ptr + index)
-        return NewUnary(ND_DEREF, NewAdd(nd_lval, expression));
-      }
-      return nd_lval;
+  /*
+   * Firstly look for declared variable in function scope.
+   * If the variable is not found in function scope,
+   * then look for in the global scope.
+   */
+
+  Node *scopes[2] = {current_scope, globals};
+  for (int i = 0; i < 2; ++i) {
+    Node *nd_lval = GetLValNodeFromIdent(scopes[i], ident);
+    if (!nd_lval) {
+      continue;
     }
+
+    if (ConsumeIfReservedTokenMatches("[")) {
+      Node *expression = Expression();
+      Expect("]");
+
+      // ptr[index] -> *(ptr + index)
+      return NewUnary(ND_DEREF, NewAdd(nd_lval, expression));
+    }
+
+    return nd_lval;
   }
 
   token = stashed_token;
+
   return NULL;
 }
 
@@ -1028,8 +1104,8 @@ static Node *Primary() {
       }
 
       // Also function that's currenly being declared is called (recursion)
-      if (FuncNamesMatch(nd_func_being_defined, nd_func_call)) {
-        nd_func_call->func_def = nd_func_being_defined;
+      if (FuncNamesMatch(current_scope, nd_func_call)) {
+        nd_func_call->func_def = current_scope;
         return nd_func_call;
       }
     }

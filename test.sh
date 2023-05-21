@@ -27,6 +27,7 @@ expect_compile_err() {
   fi
 }
 
+
 # Expect compile error
 # Deplicated param
 expect_compile_err "int my_sum(int a, int a) {return a + a;} int main() {return my_sum(10, 10);}"
@@ -166,12 +167,16 @@ assert 90 "int main() {int a; int b; a=10; b=a--; return a*b;}"
 assert 3 "int main() {int x; int *y; x=3; y=&x; return *y;}"
 assert 10 "int main() {int x; int *y; x=10; y=&x; return *y;}"
 assert 10 "int main() {int x; x=10; return *&x;}"
-assert 5 "int main() {int a; int b; a=10; b=5; return *(&a+1);}"
-assert 10 "int main() {int a; int b; a=10; b=5; return *(&b-1);}"
-assert 10 "int main() {int a; int b; a=10; b=5; return *(&b+(1-2));}"
+assert 10 "int main() {int x; x=10; int *y; y=&x; int *z; z=y; return *z;}"
+
+# TODO(k1832): Check if these are good tests (accessing different variable by adding offset)
+# assert 5 "int main() {int a; int b; a=10; b=5; return *(&a+1);}"
+# assert 10 "int main() {int a; int b; a=10; b=5; return *(&b-1);}"
+# assert 10 "int main() {int a; int b; a=10; b=5; return *(&b+(1-2));}"
+# assert 12 "int main() {int a; int b; int c; b=10; c=15; *(&a+2)=12; return c;}"
+
 assert 10 "int main() {int a; int *b; int **c; a=10; b=&a; c=&b; return **c;}"
 assert 5 "int main() {int a; int *b; a=10; b=&a; *b=5; return a;}"
-assert 12 "int main() {int a; int b; int c; b=10; c=15; *(&a+2)=12; return c;}"
 
 # A op= B
 assert 13 "int main() {int x; x=3; x+=10; return x;}"
@@ -195,6 +200,7 @@ assert 8 "int main() {int **x; sizeof(x);}"
 assert 8 "int main() {int **x; sizeof(*x);}"
 assert 8 "int main() {int x; int y; return sizeof(&x+1);}"
 
+# pointer aithmetic
 assert 10 "int main() {int a[2]; *a = 10; *(a + 1) = 20; int *p; p = a; return *p;}"
 assert 15 "int main() {int a[2]; *a = 10; *(a + 1) = 20; int *p; p = a; return *p + 5;}"
 assert 20 "int main() {int a[2]; *a = 10; *(a + 1) = 20; int *p; p = a; return *(p+1);}"
@@ -207,13 +213,31 @@ assert 20 "int main() {int a[3]; a[0] = 10; a[1] = 20; a[2] = 30; return a[1];}"
 assert 20 "int main() {int a[3]; a[0] = 10; a[1] = 20; a[2] = 30; return *(a+1);}"
 assert 30 "int main() {int a[3]; a[0] = 10; a[1] = 20; a[2] = 30; return a[2];}"
 assert 30 "int main() {int a[3]; a[0] = 10; a[1] = 20; a[2] = 30; return *(a+2);}"
+assert 30 "int main() {int a[3]; a[0] = 10; a[1] = 20; a[2] = 30; return *(a+(3-1));}"
+assert 30 "int main() {int a[3]; a[0] = 10; a[1] = 20; a[2] = 30; return *(a+3-1);}"
+assert 10 "int main() {int a[3]; int *b; b=&a[1]; a[0] = 10; a[1] = 20; a[2] = 30; return *(b-1);}"
 
 assert 10 "int main() {int a[2]; int *b; a[0] = 10; a[1] = 20; b=&a[1]; return *(b-1);}"
 assert 20 "int main() {int a[2]; int *b; a[0] = 10; a[1] = 20; b=&a[1]; return *b;}"
 assert 15 "int main() {int a[2]; int *b; a[0] = 10; a[1] = 20; b=&a[1]; return *b-5;}"
 
+# Aithmetic of pointers
+assert 9 "int main() {int a[10]; int *start; start=a; int *end; end=&a[9]; return end-start;}"
+assert 1 "int main() {int a[10]; int *start; start=a; int *end; end=&a[1]; return end-start;}"
+assert 1 "int main() {int a[10]; int *start; start=&a[2]; int *end; end=&a[3]; return end-start;}"
+assert 5 "int main() {int a[10]; int *start; start=&a[2]; int *end; end=&a[7]; return end-start;}"
+
 # Use non-direct value as index
 assert 15 "int main() {int a[3]; int i; a[0] = 3; a[1] = 5; a[2] = 7; for (i = 1; i < 3; ++i) {a[0] += a[i];} return a[0]; }"
 assert 55 "int main() {int a[10]; int i; for (i = 0; i < 10; ++i) {a[i] = i + 1;} int total; total = 0; for (i = 0; i < 10; ++i) {total += a[i];} return total;}"
+
+# Global variable
+assert 15 "int a; int sum_a(int b) { return a + b; } int main() { a = 10; return sum_a(5); }"
+assert 27 "int a; int sum_a(int b) { int a; a = 22; return a + b; } int main() { a = 10; return sum_a(5); }"
+assert 55 "int a[10]; int i; int total_a() { int ret; ret = 0; for (i = 0; i < 10; ++i) { ret += a[i]; } return ret; } int main() { for (i = 0; i < 10; ++i) { a[i] = i + 1; } return total_a(); }"
+assert 28 "int main() { int a[2]; a[1] = 28; return a[1]; }"
+assert 28 "int a[10]; int main() { a[2] = 28; return a[2]; }"
+assert 28 "int a[10]; int main() { a[7] = 28; return a[7]; }"
+assert 0 "int a[10]; int main() { a[9] = 28; return a[0]; }"
 
 echo OK

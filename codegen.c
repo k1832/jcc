@@ -8,7 +8,9 @@ const int label_digit = 5;
 static const char registers[6][4] = {"rdi", "rsi", "rdx", "rcx", "r8", "r9"};
 
 static bool IsDereferenceable(Node *node) {
-  return node->kind == ND_DEREF || node->kind == ND_LVAR;
+  return node->kind == ND_DEREF ||
+         node->kind == ND_LOCAL_VAR ||
+         node->kind == ND_GLBL_VAR;
 }
 
 // TODO(k1832): Reconsider if the comment is accurate
@@ -64,10 +66,17 @@ static void PrintAssemblyForLeftVal(Node *node) {
     return;
   }
 
-  DBGPRNT;
-  // node->kind == ND_LVAR
-  printf("  mov rax, rbp\n");
-  printf("  sub rax, %d\n", node->offset);
+  if (node->kind == ND_LOCAL_VAR) {
+    DBGPRNT;
+    printf("  mov rax, rbp\n");
+    printf("  sub rax, %d\n", node->offset);
+    printf("  push rax\n");
+    return;
+  }
+
+  // node->kind == ND_GLBL_VAR
+  printf("  lea rax, %.*s[rip]\n",
+         node->var_name_len, node->var_name);
   printf("  push rax\n");
 }
 
@@ -81,7 +90,13 @@ bool PrintAssembly(Node *node) {
     ExitWithError("Can not print assembly for NULL.\n");
   }
 
-  if (node->kind == ND_LVAR_DCLR) {
+  if (node->kind == ND_GLOBAL_VAR_LIST) {
+    DBGPRNT;
+    // Global variables are handled in the main function separately
+    return false;
+  }
+
+  if (node->kind == ND_VAR_DCLR) {
     DBGPRNT;
     return false;
   }
@@ -93,7 +108,7 @@ bool PrintAssembly(Node *node) {
     return true;
   }
 
-  if (node->kind == ND_LVAR) {
+  if (node->kind == ND_LOCAL_VAR || node->kind == ND_GLBL_VAR) {
     DBGPRNT;
     PrintAssemblyForLeftVal(node);
     DBGPRNT;
