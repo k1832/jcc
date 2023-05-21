@@ -339,7 +339,8 @@ Type *GetType() {
 #pragma GCC diagnostic pop
 
 void BuildAST();
-static Node *StatementOrExpr();
+static Node *Program();
+static Node *Statement();
 static Node *Expression();
 static Node *Assignment();
 static Node *Equality();
@@ -351,36 +352,48 @@ static Node *Dereferenceable();
 static Node *LVal();
 static Node *Primary();
 
-// Store StatementOrExpr into programs
 void BuildAST() {
   int i = 0;
   while (!AtEOF()) {
     if (i >= PROGRAM_LEN - 1)
       ExitWithErrorAt(user_input, token->str, "Exceeds max length of program.");
-    programs[i++] = StatementOrExpr();
+    programs[i++] = Program();
   }
   programs[i] = NULL;
+}
+
+/*
+ * Program =
+ *   Statement |
+ *   Expression ";"
+ */
+
+static Node *Program() {
+  Node *program = Statement();
+  if (program) return program;
+
+  Node *expression = Expression();
+  Expect(";");
+  return expression;
 }
 
 /*
  * TODO(k1832): Declaration of multiple variables
  * TODO(k1832): Accept Expression as array size
  *
- * StatementOrExpr =
+ * Statement =
  *  "return" Expression ";" |
- *  "if" "(" Expression ")" StatementOrExpr ("else" StatementOrExpr)? |
- *  "while" "(" Expression ")" StatementOrExpr
- *  "for" "(" Expression? ";" Expression? ";" Expression? ")" StatementOrExpr |
- *  "{" StatementOrExpr* "}" |
- *  Expression ";" |
+ *  "if" "(" Expression ")" Program ("else" Program)? |
+ *  "while" "(" Expression ")" Program
+ *  "for" "(" Expression? ";" Expression? ";" Expression? ")" Program |
+ *  "{" Program* "}" |
  *  "int" "*"* identifier ("[" number "]")? ";" |
- *
  *  "int" "*"* identifier "(" ( "int" "*"* identifier ("," "int" "*"* identifier )? ")" "{"
- *    StatementOrExpr*
+ *    Program*
  *  "}"
  *
  */
-static Node *StatementOrExpr() {
+static Node *Statement() {
   if (ConsumeIfKindMatches(TK_RETURN)) {
     Node *lhs = Expression();
     Expect(";");
@@ -392,10 +405,10 @@ static Node *StatementOrExpr() {
     Expect("(");
     if_node->condition = Expression();
     Expect(")");
-    if_node->body_statement = StatementOrExpr();
+    if_node->body_program = Program();
 
     if (ConsumeIfKindMatches(TK_ELSE)) {
-      if_node->else_statement = StatementOrExpr();
+      if_node->else_program = Program();
     }
 
     return if_node;
@@ -405,7 +418,7 @@ static Node *StatementOrExpr() {
     Expect("(");
     Node *lhs = Expression();
     Expect(")");
-    return NewBinary(ND_WHILE, lhs, StatementOrExpr());
+    return NewBinary(ND_WHILE, lhs, Program());
   }
 
   if (ConsumeIfKindMatches(TK_FOR)) {
@@ -425,27 +438,24 @@ static Node *StatementOrExpr() {
     }
     Expect(")");
 
-    for_node->body_statement = StatementOrExpr();
+    for_node->body_program = Program();
     return for_node;
   }
 
 
-  //  "{" StatementOrExpr* "}"
+  //  "{" Program* "}"
   if (ConsumeIfReservedTokenMatches("{")) {
     Node *nd_block =  NewNode(ND_BLOCK);
     Node *head = nd_block;
     while (!ConsumeIfReservedTokenMatches("}")) {
-      nd_block->next_in_block = StatementOrExpr();
+      nd_block->next_in_block = Program();
       nd_block = nd_block->next_in_block;
     }
     return head;
   }
 
   if (!IsTypeToken()) {
-    //  Expression ";"
-    Node *node = Expression();
-    Expect(";");
-    return node;
+    return NULL;
   }
 
   // "int" "*"* identifier ("[" number "]")? ";"
@@ -501,7 +511,7 @@ static Node *StatementOrExpr() {
 
   /*
    * "int" "*"* identifier "(" ( "int" "*"* identifier ("," "int" "*"* identifier) )? ")" "{"
-   *   StatementOrExpr*
+   *   Program*
    * "}"
    *
    * Function declaration
@@ -534,7 +544,7 @@ static Node *StatementOrExpr() {
 
   Node *node_in_block = nd_func_define;
   while (!ConsumeIfReservedTokenMatches("}")) {
-    node_in_block->next_in_block = StatementOrExpr();
+    node_in_block->next_in_block = Program();
     node_in_block = node_in_block->next_in_block;
   }
   // Reset the node that's currently being processed function.

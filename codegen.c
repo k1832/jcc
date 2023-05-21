@@ -142,12 +142,12 @@ bool PrintAssembly(Node *node) {
     // if condition is false, skip the if (body) statement
     printf("  je .L%0*d\n", label_digit, label_for_else_statement);
 
-    PrintAssembly(node->body_statement);
+    PrintAssembly(node->body_program);
     printf("  jmp .L%0*d\n", label_digit, label_for_if_end);
 
     printf(".L%0*d:\n", label_digit, label_for_else_statement);
-    if (node->else_statement) {
-      PrintAssembly(node->else_statement);
+    if (node->else_program) {
+      PrintAssembly(node->else_program);
     }
 
     printf(".L%0*d:\n", label_digit, label_for_if_end);
@@ -190,7 +190,7 @@ bool PrintAssembly(Node *node) {
     // if condition is false, skip the for statement
     printf("  je .L%0*d\n", label_digit, label_for_for_end);
 
-    PrintAssembly(node->body_statement);
+    PrintAssembly(node->body_program);
     if (node->iteration) {
       PrintAssembly(node->iteration);
     }

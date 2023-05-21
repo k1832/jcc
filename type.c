@@ -35,8 +35,8 @@ void AddType(Node *node) {
   AddType(node->lhs);
   AddType(node->rhs);
   AddType(node->condition);
-  AddType(node->body_statement);
-  AddType(node->else_statement);
+  AddType(node->body_program);
+  AddType(node->else_program);
   AddType(node->initialization);
   AddType(node->iteration);
 

@@ -80,8 +80,8 @@ struct Node {
   Node *lhs;
   Node *rhs;
   Node *condition;                      // for ND_IF, for ND_FOR
-  Node *body_statement;                 // for ND_IF
-  Node *else_statement;                 // for ND_IF
+  Node *body_program;                 // for ND_IF
+  Node *else_program;                 // for ND_IF
   Node *initialization;                 // for ND_FOR
   Node *iteration;                      // for ND_FOR
   Node *next_in_block;                  // for ND_BLOCK
