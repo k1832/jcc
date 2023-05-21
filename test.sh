@@ -37,6 +37,8 @@ expect_compile_err "int my_sum(int a, int b) {int c; int c; return a + b;} int m
 expect_compile_err "int my_sum(int a, int b, ) {return a+b;} int main() {return my_sum(2, 3);}"
 # Left-hand side is not variable
 expect_compile_err "int my_sum(int a, int b) {5=a; return a + b;} int main() {return my_sum(2, 3);}"
+# Array size must not be 0
+expect_compile_err "int main() {int a[0]; return 10;}"
 
 # return the inputted number
 assert 0 "int main() {0;}"

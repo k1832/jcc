@@ -170,6 +170,10 @@ static Node *NewLVal(Node *nd_func,
 
   lval->type = type;
   if (lval->type->kind == TY_ARRAY) {
+    if (!array_size) {
+      ExitWithErrorAt(user_input, ident->str,
+                      "Array size must not be 0\n");
+    }
     lval->type->array_size = array_size;
   }
 
