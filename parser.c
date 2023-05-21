@@ -345,6 +345,7 @@ Type *GetType() {
 void BuildAST();
 static Node *Program();
 static Node *Statement();
+static Node *VariableDeclaration();
 static Node *Expression();
 static Node *Assignment();
 static Node *Equality();
@@ -391,7 +392,7 @@ static Node *Program() {
  *  "while" "(" Expression ")" Program
  *  "for" "(" Expression? ";" Expression? ";" Expression? ")" Program |
  *  "{" Program* "}" |
- *  "int" "*"* identifier ("[" number "]")? ";" |
+ *  VariableDeclaration |
  *  "int" "*"* identifier "(" ( "int" "*"* identifier ("," "int" "*"* identifier )? ")" "{"
  *    Program*
  *  "}"
@@ -458,60 +459,9 @@ static Node *Statement() {
     return head;
   }
 
-  if (!IsTypeToken()) {
-    return NULL;
-  }
-
-  // "int" "*"* identifier ("[" number "]")? ";"
-  Type *ret_or_var_type = GetType();
-
-  Token *variable_or_func_name = ExpectIdentifier();
-  if (ConsumeIfReservedTokenMatches("[")) {
-    size_t array_size = (size_t)ExpectNumber();
-
-    // local variable
-    Node *local =
-      GetDeclaredLocal(nd_func_being_defined, variable_or_func_name);
-
-    if (local) {
-      ExitWithErrorAt(user_input, variable_or_func_name->str,
-        "Redeclaration of \"%.*s\"",
-        variable_or_func_name->len,
-        variable_or_func_name->str);
-    }
-    Type *curr_ty = ret_or_var_type;
-
-    // NOLINTNEXTLINE(readability/braces)
-    // Type *array_type = &(Type){TY_ARRAY, curr_ty};
-
-    Type *array_type = calloc(1, sizeof(Type));
-    array_type->kind = TY_ARRAY;
-    array_type->point_to = curr_ty;
-
-    Node *node = NewLVal(nd_func_being_defined,
-                         variable_or_func_name,
-                         array_type, array_size);
-    Expect("]");
-    Expect(";");
-    return node;
-  }
-
-  if (ConsumeIfReservedTokenMatches(";")) {
-    // local variable
-    Node *local =
-      GetDeclaredLocal(nd_func_being_defined, variable_or_func_name);
-
-    if (local) {
-      ExitWithErrorAt(user_input, variable_or_func_name->str,
-        "Redeclaration of \"%.*s\"",
-        variable_or_func_name->len,
-        variable_or_func_name->str);
-    }
-
-    return NewLVal(nd_func_being_defined,
-                   variable_or_func_name,
-                   ret_or_var_type, 0);
-  }
+  // VariableDeclaration
+  Node *var_dclr = VariableDeclaration();
+  if (var_dclr) return var_dclr;
 
   /*
    * "int" "*"* identifier "(" ( "int" "*"* identifier ("," "int" "*"* identifier) )? ")" "{"
@@ -521,10 +471,16 @@ static Node *Statement() {
    * Function declaration
    * TODO(k1832): Check for multiple definition with same name
    */
+  if (!IsTypeToken()) {
+    return NULL;
+  }
+
+  Type *ret_type = GetType();
+  Token *func_name = ExpectIdentifier();
   Node *nd_func_define = NewNode(ND_FUNC_DEFINITION);
-  nd_func_define->func_name = variable_or_func_name->str;
-  nd_func_define->func_name_len = variable_or_func_name->len;
-  nd_func_define->ret_type = ret_or_var_type;
+  nd_func_define->func_name = func_name->str;
+  nd_func_define->func_name_len = func_name->len;
+  nd_func_define->ret_type = ret_type;
 
   Expect("(");
 
@@ -555,6 +511,62 @@ static Node *Statement() {
   nd_func_being_defined = NULL;
 
   return nd_func_define;
+}
+
+/*
+ * Parses variable declaration.
+ * If it's not variable declaration, it returns NULL.
+ *
+ * VariableDeclaration =
+ *   "int" "*"* identifier ("[" number "]")? ";"
+ */
+static Node *VariableDeclaration() {
+  if (!IsTypeToken()) {
+    return NULL;
+  }
+
+  Token *stashed_token = token;
+
+  Type *type = GetType();
+
+  // 0 if it's not array. Otherwise, array size.
+  size_t array_size = 0;
+
+  Token *variable_or_func_name = ExpectIdentifier();
+  if (ConsumeIfReservedTokenMatches("[")) {
+    array_size = (size_t)ExpectNumber();
+
+    Type *point_to = type;
+
+    Type *array_type = calloc(1, sizeof(Type));
+    array_type->kind = TY_ARRAY;
+    array_type->point_to = point_to;
+
+    type = array_type;
+
+    Expect("]");
+  }
+
+  if (!ConsumeIfReservedTokenMatches(";")) {
+    // Not variable declaration
+    token = stashed_token;
+    return NULL;
+  }
+
+  // local variable
+  Node *local =
+    GetDeclaredLocal(nd_func_being_defined, variable_or_func_name);
+
+  if (local) {
+    ExitWithErrorAt(user_input, variable_or_func_name->str,
+      "Redeclaration of \"%.*s\"",
+      variable_or_func_name->len,
+      variable_or_func_name->str);
+  }
+
+  return NewLVal(nd_func_being_defined,
+                  variable_or_func_name,
+                  type, array_size);
 }
 
 // Expression     = Assignment
